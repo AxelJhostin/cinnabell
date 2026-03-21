@@ -1,0 +1,15 @@
+New-Item .gitignore -ItemType File
+```
+
+Abre ese `.gitignore` y pega:
+```
+# Frontend
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/.env
+backend/*.pyc

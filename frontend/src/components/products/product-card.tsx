@@ -1,6 +1,11 @@
+﻿"use client";
+
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useCartStore } from "@/stores/cartStore";
 
 export type ProductCategory = "individual" | "especial" | "box";
 
@@ -29,12 +34,37 @@ const currencyFormatter = new Intl.NumberFormat("es-EC", {
 });
 
 export function ProductCard({
+  id,
+  slug,
   name,
   description,
   price,
   image_url,
   category,
 }: ProductCardProps) {
+  const addItem = useCartStore((state) => state.addItem);
+  const [addedFeedback, setAddedFeedback] = useState(false);
+
+  useEffect(() => {
+    if (!addedFeedback) return;
+    const timeoutId = window.setTimeout(() => setAddedFeedback(false), 1300);
+    return () => window.clearTimeout(timeoutId);
+  }, [addedFeedback]);
+
+  function handleAddToCart() {
+    addItem({
+      productId: id,
+      slug,
+      name,
+      price,
+      quantity: 1,
+      category,
+      imageUrl: image_url,
+      selectedFlavors: undefined,
+    });
+    setAddedFeedback(true);
+  }
+
   return (
     <article className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-brand-accent/60">
       {image_url ? (
@@ -48,7 +78,7 @@ export function ProductCard({
         />
       ) : (
         <div className="flex h-44 w-full items-center justify-center bg-brand-accent/30 text-sm font-medium text-brand-dark/70">
-          Imagen próximamente
+          Imagen proximamente
         </div>
       )}
 
@@ -68,16 +98,25 @@ export function ProductCard({
         </div>
 
         <p className="line-clamp-3 text-sm text-brand-dark/80">
-          {description ?? "Descripción disponible pronto."}
+          {description ?? "Descripcion disponible pronto."}
         </p>
 
-        <Button
-          variant="outline"
-          className="w-full border-brand-primary/50 text-brand-primary hover:bg-brand-primary/10"
-          disabled
-        >
-          Ver detalle próximamente
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            className="bg-brand-primary text-white hover:bg-brand-primary/90"
+            onClick={handleAddToCart}
+          >
+            {addedFeedback ? "Agregado" : "Agregar"}
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="border-brand-primary/50 text-brand-primary hover:bg-brand-primary/10"
+          >
+            <Link href={`/menu/${encodeURIComponent(slug)}`}>Ver detalle</Link>
+          </Button>
+        </div>
       </div>
     </article>
   );

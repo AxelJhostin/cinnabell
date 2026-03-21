@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
+﻿import Link from "next/link";
 
+import { CartDrawer } from "@/components/cart/cart-drawer";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
@@ -15,14 +15,7 @@ export function Navbar() {
             Cinnabell
           </Link>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-brand-dark sm:hidden"
-            aria-label="Carrito"
-          >
-            <ShoppingBag />
-          </Button>
+          <CartDrawer triggerClassName="text-brand-dark sm:hidden" />
         </div>
 
         <nav className="flex items-center gap-2 sm:gap-4">
@@ -47,14 +40,7 @@ export function Navbar() {
           <Button asChild className="bg-brand-primary text-white hover:bg-brand-primary/90">
             <Link href="/registro">Registro</Link>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="hidden text-brand-dark sm:inline-flex"
-            aria-label="Carrito"
-          >
-            <ShoppingBag />
-          </Button>
+          <CartDrawer triggerClassName="hidden text-brand-dark sm:inline-flex" />
         </div>
       </div>
     </header>

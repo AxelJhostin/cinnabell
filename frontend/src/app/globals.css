@@ -4,32 +4,37 @@
 
 @import "@fontsource/inter";
 @import "@fontsource/playfair-display";
+@import "tw-animate-css";
 
 :root {
-  --background: #FFF3ED;
-  --foreground: #1A1A2E;
-  --primary: #C8553D;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F4A261;
-  --secondary-foreground: #1A1A2E;
-  --accent: #F9C6C6;
-  --accent-foreground: #1A1A2E;
-  --muted: #F5F0EB;
-  --muted-foreground: #555555;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A2E;
-  --border: #E8D5C4;
-  --input: #E8D5C4;
-  --ring: #C8553D;
+  --background: 24 100% 96%;
+  --foreground: 240 28% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 28% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 28% 14%;
+  --primary: 10 56% 51%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 28 87% 67%;
+  --secondary-foreground: 240 28% 14%;
+  --muted: 30 33% 94%;
+  --muted-foreground: 0 0% 33%;
+  --accent: 0 77% 88%;
+  --accent-foreground: 240 28% 14%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 43% 84%;
+  --input: 30 43% 84%;
+  --ring: 10 56% 51%;
   --radius: 0.75rem;
 }
 
-* {
-  border-color: var(--border);
-}
+@layer base {
+  * {
+    @apply border-border;
+  }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: "Inter", sans-serif;
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
 }

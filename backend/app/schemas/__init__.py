@@ -28,8 +28,10 @@ from app.schemas.order import (
 )
 from app.schemas.admin import (
     AdminDashboardSummaryResponse,
+    AdminOrderDayManagementResponse,
     AdminOrderDetailResponse,
     AdminOrderDayResponse,
+    AdminOrderDayUpdateRequest,
     AdminOrderGuestDataResponse,
     AdminOrderItemDetailResponse,
     AdminOrderItemSelectedFlavorResponse,

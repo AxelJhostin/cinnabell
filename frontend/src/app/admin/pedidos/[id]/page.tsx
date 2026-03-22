@@ -65,6 +65,14 @@ type AdminOrderDetailResponse = {
   items_count: number;
 };
 
+type AdminOrderStatusUpdateResponse = {
+  order_id: number;
+  previous_status: AdminOrderStatus;
+  current_status: AdminOrderStatus;
+  note: string | null;
+  changed_at: string | null;
+};
+
 const statusClassMap: Record<AdminOrderStatus, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800",
   CONFIRMADO: "bg-sky-100 text-sky-800",
@@ -82,6 +90,15 @@ const statusLabelMap: Record<AdminOrderStatus, string> = {
   ENTREGADO: "Entregado",
   CANCELADO: "Cancelado",
 };
+
+const statusOptions: Array<{ value: AdminOrderStatus; label: string }> = [
+  { value: "PENDIENTE", label: "Pendiente" },
+  { value: "CONFIRMADO", label: "Confirmado" },
+  { value: "EN_PREPARACION", label: "En preparacion" },
+  { value: "LISTO", label: "Listo" },
+  { value: "ENTREGADO", label: "Entregado" },
+  { value: "CANCELADO", label: "Cancelado" },
+];
 
 const currencyFormatter = new Intl.NumberFormat("es-EC", {
   style: "currency",
@@ -132,6 +149,11 @@ export default function AdminPedidoDetailPage() {
   const [isNotFound, setIsNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [selectedStatus, setSelectedStatus] = useState<AdminOrderStatus | "">("");
+  const [statusNote, setStatusNote] = useState("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusUpdateError, setStatusUpdateError] = useState<string | null>(null);
+  const [statusUpdateSuccess, setStatusUpdateSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -194,6 +216,60 @@ export default function AdminPedidoDetailPage() {
       return aTime - bTime;
     });
   }, [order]);
+
+  useEffect(() => {
+    if (!order) return;
+    setSelectedStatus(order.status);
+  }, [order]);
+
+  async function handleStatusUpdateSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!order) return;
+    if (!selectedStatus) {
+      setStatusUpdateError("Selecciona un estado para continuar.");
+      setStatusUpdateSuccess(null);
+      return;
+    }
+    if (selectedStatus === order.status) {
+      setStatusUpdateError("Selecciona un estado diferente al estado actual.");
+      setStatusUpdateSuccess(null);
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    setStatusUpdateError(null);
+    setStatusUpdateSuccess(null);
+
+    try {
+      const trimmedNote = statusNote.trim();
+      const payload: { new_status: AdminOrderStatus; note?: string } = {
+        new_status: selectedStatus,
+      };
+      if (trimmedNote) {
+        payload.note = trimmedNote;
+      }
+
+      const response = await api.patch<AdminOrderStatusUpdateResponse>(
+        `/admin/orders/${order.id}/status`,
+        payload
+      );
+
+      setStatusUpdateSuccess(
+        `Estado actualizado a ${getStatusLabel(response.current_status)} correctamente.`
+      );
+      setStatusNote("");
+      setRetryKey((value) => value + 1);
+    } catch (requestError) {
+      setStatusUpdateError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No se pudo actualizar el estado del pedido."
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }
 
   return (
     <div className="bg-brand-soft px-4 py-10 sm:px-6 sm:py-14">
@@ -417,9 +493,66 @@ export default function AdminPedidoDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-brand-dark/75">
-                      Proximamente podras actualizar el estado del pedido desde esta seccion.
-                    </p>
+                    <form className="space-y-3" onSubmit={handleStatusUpdateSubmit}>
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="new-status"
+                          className="text-xs font-medium uppercase tracking-wide text-brand-dark/80"
+                        >
+                          Nuevo estado
+                        </label>
+                        <select
+                          id="new-status"
+                          value={selectedStatus}
+                          onChange={(event) =>
+                            setSelectedStatus(event.target.value as AdminOrderStatus)
+                          }
+                          disabled={isUpdatingStatus}
+                          className="w-full rounded-md border border-brand-accent/70 bg-white px-3 py-2 text-sm text-brand-dark outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-brand-soft/40"
+                        >
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="status-note"
+                          className="text-xs font-medium uppercase tracking-wide text-brand-dark/80"
+                        >
+                          Nota (opcional)
+                        </label>
+                        <textarea
+                          id="status-note"
+                          value={statusNote}
+                          onChange={(event) => setStatusNote(event.target.value)}
+                          disabled={isUpdatingStatus}
+                          placeholder="Ejemplo: confirmado por telefono con el cliente."
+                          rows={3}
+                          className="w-full resize-none rounded-md border border-brand-accent/70 bg-white px-3 py-2 text-sm text-brand-dark outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:cursor-not-allowed disabled:bg-brand-soft/40"
+                        />
+                      </div>
+
+                      {statusUpdateError && (
+                        <p className="text-xs text-destructive">{statusUpdateError}</p>
+                      )}
+                      {statusUpdateSuccess && (
+                        <p className="text-xs text-emerald-700">{statusUpdateSuccess}</p>
+                      )}
+
+                      <Button
+                        type="submit"
+                        className="w-full bg-brand-primary text-white hover:bg-brand-primary/90"
+                        disabled={
+                          isUpdatingStatus || !selectedStatus || selectedStatus === order.status
+                        }
+                      >
+                        {isUpdatingStatus ? "Actualizando..." : "Aplicar cambio"}
+                      </Button>
+                    </form>
                   </CardContent>
                 </Card>
               </div>

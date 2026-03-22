@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.order import OrderStatus
 
@@ -89,3 +89,29 @@ class AdminOrderStatusUpdateResponse(BaseModel):
     current_status: OrderStatus
     note: str | None = None
     changed_at: datetime | None = None
+
+
+class AdminOrderDayManagementResponse(BaseModel):
+    id: int
+    date: date
+    is_open: bool
+    max_capacity: int
+    current_orders: int
+    is_special: bool
+    note: str | None = None
+    available_slots: int
+
+
+class AdminOrderDayUpdateRequest(BaseModel):
+    is_open: bool | None = None
+    max_capacity: int | None = Field(default=None, ge=0)
+    is_special: bool | None = None
+    note: str | None = Field(default=None, max_length=255)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    @model_validator(mode="after")
+    def validate_at_least_one_field(self) -> "AdminOrderDayUpdateRequest":
+        if not self.model_fields_set:
+            raise ValueError("Debes enviar al menos un campo para actualizar")
+        return self

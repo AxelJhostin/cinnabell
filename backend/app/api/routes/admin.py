@@ -11,7 +11,9 @@ from app.models.order_day import OrderDay
 from app.models.user import User
 from app.schemas.admin import (
     AdminDashboardSummaryResponse,
+    AdminOrderDayManagementResponse,
     AdminOrderDayResponse,
+    AdminOrderDayUpdateRequest,
     AdminOrderDetailResponse,
     AdminOrderGuestDataResponse,
     AdminOrderItemDetailResponse,
@@ -76,6 +78,23 @@ def build_selected_flavors(raw_flavors: object) -> list[AdminOrderItemSelectedFl
     return normalized_flavors
 
 
+def get_available_slots(order_day: OrderDay) -> int:
+    return max(order_day.max_capacity - order_day.current_orders, 0)
+
+
+def build_admin_order_day_response(order_day: OrderDay) -> AdminOrderDayManagementResponse:
+    return AdminOrderDayManagementResponse(
+        id=order_day.id,
+        date=order_day.date,
+        is_open=order_day.is_open,
+        max_capacity=order_day.max_capacity,
+        current_orders=order_day.current_orders,
+        is_special=order_day.is_special,
+        note=order_day.note,
+        available_slots=get_available_slots(order_day),
+    )
+
+
 def can_transition_status(current_status: OrderStatus, new_status: OrderStatus) -> bool:
     if current_status == new_status:
         return False
@@ -130,6 +149,70 @@ def get_admin_dashboard_summary(
         today_remaining_capacity=int(today_remaining_capacity),
         today_revenue=round(float(today_revenue), 2),
     )
+
+
+@router.get("/order-days", response_model=list[AdminOrderDayManagementResponse])
+def get_admin_order_days(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> list[AdminOrderDayManagementResponse]:
+    today = date.today()
+    order_days = (
+        db.query(OrderDay)
+        .filter(OrderDay.date >= today)
+        .order_by(OrderDay.date.asc())
+        .all()
+    )
+    return [build_admin_order_day_response(order_day) for order_day in order_days]
+
+
+@router.patch("/order-days/{order_day_id}", response_model=AdminOrderDayManagementResponse)
+def update_admin_order_day(
+    order_day_id: int,
+    payload: AdminOrderDayUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminOrderDayManagementResponse:
+    order_day = db.query(OrderDay).filter(OrderDay.id == order_day_id).first()
+    if order_day is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dia de pedido no encontrado")
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    if "max_capacity" in updates:
+        new_max_capacity = int(updates["max_capacity"])
+        if new_max_capacity < order_day.current_orders:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La capacidad maxima no puede ser menor a los pedidos actuales",
+            )
+        order_day.max_capacity = new_max_capacity
+
+    if "is_special" in updates:
+        order_day.is_special = bool(updates["is_special"])
+
+    if "note" in updates:
+        raw_note = updates["note"]
+        if raw_note is None:
+            order_day.note = None
+        else:
+            normalized_note = str(raw_note).strip()
+            order_day.note = normalized_note or None
+
+    if "is_open" in updates:
+        requested_is_open = bool(updates["is_open"])
+        if requested_is_open and get_available_slots(order_day) <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede abrir un dia sin cupos disponibles",
+            )
+        order_day.is_open = requested_is_open
+    elif get_available_slots(order_day) <= 0:
+        order_day.is_open = False
+
+    db.commit()
+    db.refresh(order_day)
+    return build_admin_order_day_response(order_day)
 
 
 @router.get("/orders", response_model=list[AdminOrderListItemResponse])

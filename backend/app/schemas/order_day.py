@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class OrderDayBaseResponse(BaseModel):
@@ -13,6 +13,11 @@ class OrderDayBaseResponse(BaseModel):
     note: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field(return_type=int)
+    @property
+    def available_slots(self) -> int:
+        return max(self.max_capacity - self.current_orders, 0)
 
 
 class OrderDayListResponse(OrderDayBaseResponse):

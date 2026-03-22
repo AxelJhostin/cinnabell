@@ -13,6 +13,10 @@ from app.schemas.order import CreateOrderRequest, CreateOrderResponse, TrackOrde
 router = APIRouter()
 
 
+def get_available_slots(order_day: OrderDay) -> int:
+    return max(order_day.max_capacity - order_day.current_orders, 0)
+
+
 def generate_tracking_token(db: Session) -> str:
     for _ in range(5):
         token = uuid4().hex
@@ -34,7 +38,7 @@ def create_order(payload: CreateOrderRequest, db: Session = Depends(get_db)) -> 
     if not order_day.is_open:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El dia de pedido esta cerrado")
 
-    if order_day.current_orders >= order_day.max_capacity:
+    if get_available_slots(order_day) <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No hay cupos disponibles para este dia")
 
     product_ids = {item.product_id for item in payload.items}
@@ -89,6 +93,8 @@ def create_order(payload: CreateOrderRequest, db: Session = Depends(get_db)) -> 
 
         order.total = round(total, 2)
         order_day.current_orders += 1
+        if get_available_slots(order_day) <= 0:
+            order_day.is_open = False
 
         status_log = OrderStatusLog(
             order_id=order.id,

@@ -55,6 +55,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [internalValue, setInternalValue] = useState<string>("");
+  const [retryKey, setRetryKey] = useState(0);
 
   const selectedValue = value ?? internalValue;
 
@@ -88,7 +89,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [retryKey]);
 
   const hasDays = useMemo(() => days.length > 0, [days]);
 
@@ -131,7 +132,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
           type="button"
           variant="outline"
           className="mt-3 border-brand-primary/50 text-brand-primary hover:bg-brand-primary/10"
-          onClick={() => window.location.reload()}
+          onClick={() => setRetryKey((value) => value + 1)}
         >
           Reintentar
         </Button>

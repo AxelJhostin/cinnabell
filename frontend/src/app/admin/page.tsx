@@ -9,11 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { api } from "@/lib/api";
 
 const quickAccess = [
-  { key: "pedidos", label: "Pedidos" },
-  { key: "productos", label: "Productos" },
-  { key: "calendario", label: "Calendario" },
-  { key: "clientes", label: "Clientes" },
-  { key: "reportes", label: "Reportes" },
+  { href: "/admin/pedidos", label: "Pedidos" },
+  { href: "/admin/productos", label: "Productos" },
+  { href: "/admin/calendario", label: "Calendario" },
+  { href: "/admin/clientes", label: "Clientes" },
+  { href: "/admin/reportes", label: "Reportes" },
 ] as const;
 
 type DashboardSummaryResponse = {
@@ -185,12 +185,12 @@ export default function AdminPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {quickAccess.map((item) => (
               <Link
-                key={item.key}
-                href={`/admin?modulo=${item.key}`}
+                key={item.href}
+                href={item.href}
                 className="rounded-xl border border-brand-accent/60 bg-brand-soft/45 px-3 py-3 text-sm font-medium text-brand-dark transition hover:border-brand-primary/40 hover:bg-brand-soft"
               >
                 <span className="block">{item.label}</span>
-                <span className="mt-1 block text-xs text-brand-dark/65">Proximamente</span>
+                <span className="mt-1 block text-xs text-brand-dark/65">Ir al modulo</span>
               </Link>
             ))}
           </div>

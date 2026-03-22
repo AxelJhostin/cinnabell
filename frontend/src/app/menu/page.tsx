@@ -14,6 +14,7 @@ export default function MenuPage() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const hasProducts = useMemo(() => products.length > 0, [products]);
 
@@ -47,7 +48,7 @@ export default function MenuPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [retryKey]);
 
   return (
     <div className="bg-brand-soft">
@@ -84,7 +85,7 @@ export default function MenuPage() {
             <p className="mt-2 text-sm text-brand-dark/80">{error}</p>
             <Button
               className="mt-4 bg-brand-primary text-white hover:bg-brand-primary/90"
-              onClick={() => window.location.reload()}
+              onClick={() => setRetryKey((value) => value + 1)}
             >
               Reintentar
             </Button>

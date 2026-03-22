@@ -32,6 +32,7 @@ type AuthStore = {
   fetchMe: () => Promise<AuthUser | null>;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
+  logout: () => Promise<void>;
   logoutLocal: () => void;
 };
 
@@ -101,6 +102,21 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       } catch (error) {
         throw toStoreError(error, "No se pudo completar el registro.");
       } finally {
+        stopLoading();
+      }
+    },
+
+    logout: async () => {
+      startLoading();
+      try {
+        await api.post<{ message: string }>("/auth/logout");
+      } catch (error) {
+        throw toStoreError(error, "No se pudo cerrar sesion.");
+      } finally {
+        set({
+          user: null,
+          isAuthenticated: false,
+        });
         stopLoading();
       }
     },

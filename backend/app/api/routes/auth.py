@@ -17,12 +17,23 @@ from app.schemas.auth import (
 router = APIRouter()
 
 
+def _get_auth_cookie_settings() -> dict[str, str | bool]:
+    is_production = settings.ENVIRONMENT.lower() == "production"
+    cookie_samesite = "none" if is_production else "lax"
+    return {
+        "httponly": True,
+        "samesite": cookie_samesite,
+        "secure": is_production,
+        "path": "/",
+    }
+
+
 @router.post("/register", response_model=UserPublicResponse, status_code=status.HTTP_201_CREATED)
 def register_user(payload: RegisterRequest, db: Session = Depends(get_db)) -> UserPublicResponse:
     normalized_email = payload.email.lower()
     existing_user = db.query(User).filter(User.email == normalized_email).first()
     if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya esta registrado")
 
     user = User(
         name=payload.name,
@@ -37,7 +48,7 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)) -> Us
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya esta registrado")
 
     db.refresh(user)
     return user
@@ -55,27 +66,38 @@ def login_user(
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales inválidas",
+            detail="Credenciales invalidas",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
     max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    is_production = settings.ENVIRONMENT.lower() == "production"
-    cookie_samesite = "none" if is_production else "lax"
+    cookie_settings = _get_auth_cookie_settings()
 
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE_NAME,
         value=token,
-        httponly=True,
-        samesite=cookie_samesite,
-        secure=is_production,
         max_age=max_age,
         expires=max_age,
-        path="/",
+        **cookie_settings,
     )
 
-    return MessageResponse(message="Inicio de sesión exitoso")
+    return MessageResponse(message="Inicio de sesion exitoso")
+
+
+@router.post("/logout", response_model=MessageResponse)
+def logout_user(response: Response) -> MessageResponse:
+    cookie_settings = _get_auth_cookie_settings()
+
+    response.delete_cookie(
+        key=ACCESS_TOKEN_COOKIE_NAME,
+        path=str(cookie_settings["path"]),
+        secure=bool(cookie_settings["secure"]),
+        httponly=bool(cookie_settings["httponly"]),
+        samesite=str(cookie_settings["samesite"]),
+    )
+
+    return MessageResponse(message="Logged out")
 
 
 @router.get("/me", response_model=UserPublicResponse)

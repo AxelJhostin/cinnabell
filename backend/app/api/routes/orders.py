@@ -37,16 +37,6 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ) -> CreateOrderResponse:
-    order_day = db.query(OrderDay).filter(OrderDay.id == payload.order_day_id).first()
-    if order_day is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dia de pedido no encontrado")
-
-    if not order_day.is_open:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El dia de pedido esta cerrado")
-
-    if get_available_slots(order_day) <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No hay cupos disponibles para este dia")
-
     product_ids = {item.product_id for item in payload.items}
     products = (
         db.query(Product)
@@ -64,6 +54,24 @@ def create_order(
         )
 
     try:
+        order_day = (
+            db.query(OrderDay)
+            .filter(OrderDay.id == payload.order_day_id)
+            .with_for_update()
+            .first()
+        )
+        if order_day is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dia de pedido no encontrado")
+
+        if not order_day.is_open:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El dia de pedido esta cerrado")
+
+        if get_available_slots(order_day) <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No hay cupos disponibles para este dia",
+            )
+
         tracking_token = generate_tracking_token(db)
 
         if current_user is not None:
@@ -129,6 +137,9 @@ def create_order(
         db.commit()
         db.refresh(order)
         return order
+    except HTTPException:
+        db.rollback()
+        raise
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(

@@ -36,6 +36,8 @@ from app.schemas.admin import (
     AdminOrderItemDetailResponse,
     AdminOrderItemSelectedFlavorResponse,
     AdminOrderListItemResponse,
+    AdminProductManagementResponse,
+    AdminProductUpdateRequest,
     AdminOrderStatusUpdateRequest,
     AdminOrderStatusUpdateResponse,
     AdminOrderStatusLogDetailResponse,

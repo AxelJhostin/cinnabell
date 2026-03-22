@@ -3,6 +3,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.order import OrderStatus
+from app.models.product import ProductCategory
 
 
 class AdminDashboardSummaryResponse(BaseModel):
@@ -112,6 +113,34 @@ class AdminOrderDayUpdateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_at_least_one_field(self) -> "AdminOrderDayUpdateRequest":
+        if not self.model_fields_set:
+            raise ValueError("Debes enviar al menos un campo para actualizar")
+        return self
+
+
+class AdminProductManagementResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+    description: str | None = None
+    price: float
+    image_url: str | None = None
+    category: ProductCategory
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdminProductUpdateRequest(BaseModel):
+    description: str | None = Field(default=None, max_length=500)
+    price: float | None = Field(default=None, ge=0)
+    image_url: str | None = Field(default=None, max_length=500)
+    is_active: bool | None = None
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    @model_validator(mode="after")
+    def validate_at_least_one_field(self) -> "AdminProductUpdateRequest":
         if not self.model_fields_set:
             raise ValueError("Debes enviar al menos un campo para actualizar")
         return self

@@ -8,6 +8,7 @@ from app.api.deps import get_current_admin
 from app.core.database import get_db
 from app.models.order import Order, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
+from app.models.product import Product
 from app.models.user import User
 from app.schemas.admin import (
     AdminDashboardSummaryResponse,
@@ -19,6 +20,8 @@ from app.schemas.admin import (
     AdminOrderItemDetailResponse,
     AdminOrderItemSelectedFlavorResponse,
     AdminOrderListItemResponse,
+    AdminProductManagementResponse,
+    AdminProductUpdateRequest,
     AdminOrderStatusUpdateRequest,
     AdminOrderStatusUpdateResponse,
     AdminOrderStatusLogDetailResponse,
@@ -213,6 +216,68 @@ def update_admin_order_day(
     db.commit()
     db.refresh(order_day)
     return build_admin_order_day_response(order_day)
+
+
+@router.get("/products", response_model=list[AdminProductManagementResponse])
+def get_admin_products(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> list[AdminProductManagementResponse]:
+    products = (
+        db.query(Product)
+        .order_by(Product.is_active.desc(), Product.category.asc(), Product.name.asc())
+        .all()
+    )
+    return [
+        AdminProductManagementResponse.model_validate(product, from_attributes=True)
+        for product in products
+    ]
+
+
+@router.patch("/products/{product_id}", response_model=AdminProductManagementResponse)
+def update_admin_product(
+    product_id: int,
+    payload: AdminProductUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminProductManagementResponse:
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    if "price" in updates:
+        new_price = float(updates["price"])
+        if new_price < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El precio no puede ser negativo",
+            )
+        product.price = new_price
+
+    if "description" in updates:
+        raw_description = updates["description"]
+        if raw_description is None:
+            product.description = None
+        else:
+            normalized_description = str(raw_description).strip()
+            product.description = normalized_description or None
+
+    if "image_url" in updates:
+        raw_image_url = updates["image_url"]
+        if raw_image_url is None:
+            product.image_url = None
+        else:
+            normalized_image_url = str(raw_image_url).strip()
+            product.image_url = normalized_image_url or None
+
+    if "is_active" in updates:
+        product.is_active = bool(updates["is_active"])
+
+    db.commit()
+    db.refresh(product)
+    return AdminProductManagementResponse.model_validate(product, from_attributes=True)
 
 
 @router.get("/orders", response_model=list[AdminOrderListItemResponse])

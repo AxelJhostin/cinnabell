@@ -144,3 +144,22 @@ class AdminProductUpdateRequest(BaseModel):
         if not self.model_fields_set:
             raise ValueError("Debes enviar al menos un campo para actualizar")
         return self
+
+
+class AdminCustomerListItemResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: str | None = None
+    created_at: datetime | None = None
+    orders_count: int
+    total_spent: float
+    last_order_date: datetime | None = None
+
+
+class AdminReportSummaryResponse(BaseModel):
+    total_orders: int
+    total_revenue: float
+    average_order_value: float
+    orders_today: int
+    revenue_today: float

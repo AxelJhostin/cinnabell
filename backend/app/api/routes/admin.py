@@ -9,8 +9,9 @@ from app.core.database import get_db
 from app.models.order import Order, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
 from app.models.product import Product
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.admin import (
+    AdminCustomerListItemResponse,
     AdminDashboardSummaryResponse,
     AdminOrderDayManagementResponse,
     AdminOrderDayResponse,
@@ -22,6 +23,7 @@ from app.schemas.admin import (
     AdminOrderListItemResponse,
     AdminProductManagementResponse,
     AdminProductUpdateRequest,
+    AdminReportSummaryResponse,
     AdminOrderStatusUpdateRequest,
     AdminOrderStatusUpdateResponse,
     AdminOrderStatusLogDetailResponse,
@@ -154,6 +156,42 @@ def get_admin_dashboard_summary(
     )
 
 
+@router.get("/reports/summary", response_model=AdminReportSummaryResponse)
+def get_admin_reports_summary(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminReportSummaryResponse:
+    today = date.today()
+
+    total_orders = db.query(func.count(Order.id)).scalar() or 0
+    total_revenue = db.query(func.coalesce(func.sum(Order.total), 0.0)).scalar() or 0.0
+
+    orders_today = (
+        db.query(func.count(Order.id))
+        .join(OrderDay, Order.order_day_id == OrderDay.id)
+        .filter(OrderDay.date == today)
+        .scalar()
+        or 0
+    )
+    revenue_today = (
+        db.query(func.coalesce(func.sum(Order.total), 0.0))
+        .join(OrderDay, Order.order_day_id == OrderDay.id)
+        .filter(OrderDay.date == today)
+        .scalar()
+        or 0.0
+    )
+
+    average_order_value = float(total_revenue) / int(total_orders) if int(total_orders) > 0 else 0.0
+
+    return AdminReportSummaryResponse(
+        total_orders=int(total_orders),
+        total_revenue=round(float(total_revenue), 2),
+        average_order_value=round(float(average_order_value), 2),
+        orders_today=int(orders_today),
+        revenue_today=round(float(revenue_today), 2),
+    )
+
+
 @router.get("/order-days", response_model=list[AdminOrderDayManagementResponse])
 def get_admin_order_days(
     current_admin: User = Depends(get_current_admin),
@@ -278,6 +316,69 @@ def update_admin_product(
     db.commit()
     db.refresh(product)
     return AdminProductManagementResponse.model_validate(product, from_attributes=True)
+
+
+@router.get("/customers", response_model=list[AdminCustomerListItemResponse])
+def get_admin_customers(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> list[AdminCustomerListItemResponse]:
+    clients = (
+        db.query(User)
+        .filter(User.role == UserRole.client)
+        .order_by(User.name.asc(), User.id.asc())
+        .all()
+    )
+    if not clients:
+        return []
+
+    client_ids = [client.id for client in clients]
+
+    metric_rows = (
+        db.query(
+            Order.user_id.label("user_id"),
+            func.count(Order.id).label("orders_count"),
+            func.coalesce(func.sum(Order.total), 0.0).label("total_spent"),
+            func.max(Order.created_at).label("last_order_date"),
+        )
+        .filter(Order.user_id.in_(client_ids))
+        .group_by(Order.user_id)
+        .all()
+    )
+
+    metrics_by_user_id = {
+        int(row.user_id): {
+            "orders_count": int(row.orders_count or 0),
+            "total_spent": round(float(row.total_spent or 0.0), 2),
+            "last_order_date": row.last_order_date,
+        }
+        for row in metric_rows
+        if row.user_id is not None
+    }
+
+    response = [
+        AdminCustomerListItemResponse(
+            id=client.id,
+            name=client.name,
+            email=client.email,
+            phone=client.phone,
+            created_at=client.created_at,
+            orders_count=metrics_by_user_id.get(client.id, {}).get("orders_count", 0),
+            total_spent=metrics_by_user_id.get(client.id, {}).get("total_spent", 0.0),
+            last_order_date=metrics_by_user_id.get(client.id, {}).get("last_order_date"),
+        )
+        for client in clients
+    ]
+
+    response.sort(
+        key=lambda item: (
+            -item.orders_count,
+            item.last_order_date is None,
+            -(item.last_order_date.timestamp()) if item.last_order_date else 0.0,
+            item.name.lower(),
+        )
+    )
+    return response
 
 
 @router.get("/orders", response_model=list[AdminOrderListItemResponse])

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -39,5 +39,53 @@ class CreateOrderResponse(BaseModel):
     status: OrderStatus
     total: float
     created_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GuestDataTrackingResponse(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+
+
+class OrderDayTrackingResponse(BaseModel):
+    id: int
+    date: date
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderItemTrackingResponse(BaseModel):
+    id: int
+    product_id: int
+    quantity: int
+    selected_flavors: list[OrderItemSelectedFlavorInput] | None = None
+    unit_price: float
+    subtotal: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderStatusLogTrackingResponse(BaseModel):
+    id: int
+    old_status: OrderStatus | None = None
+    new_status: OrderStatus
+    note: str | None = None
+    changed_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TrackOrderResponse(BaseModel):
+    id: int
+    tracking_token: str
+    status: OrderStatus
+    total: float
+    created_at: datetime | None = None
+    guest_data: GuestDataTrackingResponse | None = None
+    order_day: OrderDayTrackingResponse
+    items: list[OrderItemTrackingResponse] = Field(default_factory=list)
+    status_log: list[OrderStatusLogTrackingResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

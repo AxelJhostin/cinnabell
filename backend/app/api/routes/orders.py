@@ -2,13 +2,13 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.models.order import Order, OrderItem, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
 from app.models.product import Product
-from app.schemas.order import CreateOrderRequest, CreateOrderResponse
+from app.schemas.order import CreateOrderRequest, CreateOrderResponse, TrackOrderResponse
 
 router = APIRouter()
 
@@ -107,3 +107,20 @@ def create_order(payload: CreateOrderRequest, db: Session = Depends(get_db)) -> 
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo crear el pedido",
         )
+
+
+@router.get("/track/{token}", response_model=TrackOrderResponse)
+def track_order_by_token(token: str, db: Session = Depends(get_db)) -> TrackOrderResponse:
+    order = (
+        db.query(Order)
+        .options(
+            selectinload(Order.order_day),
+            selectinload(Order.items),
+            selectinload(Order.status_log),
+        )
+        .filter(Order.tracking_token == token)
+        .first()
+    )
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+    return order

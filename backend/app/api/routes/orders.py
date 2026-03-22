@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
+from app.api.deps import get_optional_current_user
 from app.core.database import get_db
 from app.models.order import Order, OrderItem, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
 from app.models.product import Product
+from app.models.user import User
 from app.schemas.order import CreateOrderRequest, CreateOrderResponse, TrackOrderResponse
 
 router = APIRouter()
@@ -30,7 +32,11 @@ def generate_tracking_token(db: Session) -> str:
 
 
 @router.post("", response_model=CreateOrderResponse, status_code=status.HTTP_201_CREATED)
-def create_order(payload: CreateOrderRequest, db: Session = Depends(get_db)) -> CreateOrderResponse:
+def create_order(
+    payload: CreateOrderRequest,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+) -> CreateOrderResponse:
     order_day = db.query(OrderDay).filter(OrderDay.id == payload.order_day_id).first()
     if order_day is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dia de pedido no encontrado")
@@ -60,9 +66,25 @@ def create_order(payload: CreateOrderRequest, db: Session = Depends(get_db)) -> 
     try:
         tracking_token = generate_tracking_token(db)
 
+        if current_user is not None:
+            guest_data_payload = {
+                "name": current_user.name,
+                "email": current_user.email,
+                "phone": current_user.phone,
+            }
+            user_id = current_user.id
+        else:
+            if payload.guest_data is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Los datos de contacto son obligatorios para pedidos de invitado",
+                )
+            guest_data_payload = payload.guest_data.model_dump()
+            user_id = None
+
         order = Order(
-            user_id=None,
-            guest_data=payload.guest_data.model_dump(),
+            user_id=user_id,
+            guest_data=guest_data_payload,
             order_day_id=order_day.id,
             status=OrderStatus.pendiente,
             total=0,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 
 const steps = [
@@ -41,11 +42,7 @@ const contactSchema = z.object({
     .trim()
     .min(1, "El correo es obligatorio.")
     .email("Ingresa un correo valido."),
-  phone: z
-    .string()
-    .trim()
-    .min(7, "Ingresa un telefono valido.")
-    .max(30, "El telefono no puede exceder 30 caracteres."),
+  phone: z.string().trim().max(30, "El telefono no puede exceder 30 caracteres."),
 });
 
 type ContactFormValues = z.infer<typeof contactSchema>;
@@ -69,7 +66,7 @@ type CreateOrderItemPayload = {
 
 type CreateOrderPayload = {
   order_day_id: number;
-  guest_data: {
+  guest_data?: {
     name: string;
     email: string;
     phone: string;
@@ -94,6 +91,8 @@ function formatSelectedDate(isoDate: string): string {
 
 export default function PedirPage() {
   const router = useRouter();
+  const sessionCheckedRef = useRef(false);
+  const didPrefillContactRef = useRef(false);
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
@@ -108,8 +107,15 @@ export default function PedirPage() {
   const totalItems = useCartStore((state) => state.totalItems);
   const totalPrice = useCartStore((state) => state.totalPrice);
   const clearCart = useCartStore((state) => state.clearCart);
+  const authUser = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const fetchMe = useAuthStore((state) => state.fetchMe);
 
   const cartIsEmpty = useMemo(() => totalItems === 0, [totalItems]);
+  const authenticatedUser = useMemo(
+    () => (isAuthenticated && authUser ? authUser : null),
+    [isAuthenticated, authUser]
+  );
   const canContinueFromStepOne =
     Boolean(selectedDate) &&
     selectedOrderDayId !== null &&
@@ -128,6 +134,9 @@ export default function PedirPage() {
     handleSubmit,
     formState: { errors, isValid },
     getValues,
+    setError,
+    clearErrors,
+    reset,
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
     mode: "onChange",
@@ -144,6 +153,34 @@ export default function PedirPage() {
     }
     return getValues();
   }, [contactData, getValues]);
+  const contactSummary = useMemo(
+    () => ({
+      name: normalizedContactData.name?.trim() || authenticatedUser?.name || "",
+      email: normalizedContactData.email?.trim() || authenticatedUser?.email || "",
+      phone: normalizedContactData.phone?.trim() || authenticatedUser?.phone || "",
+    }),
+    [normalizedContactData, authenticatedUser]
+  );
+
+  useEffect(() => {
+    if (sessionCheckedRef.current) return;
+    sessionCheckedRef.current = true;
+    void fetchMe();
+  }, [fetchMe]);
+
+  useEffect(() => {
+    if (!authenticatedUser || didPrefillContactRef.current) return;
+
+    const prefilledContact: ContactFormValues = {
+      name: authenticatedUser.name,
+      email: authenticatedUser.email,
+      phone: authenticatedUser.phone ?? "",
+    };
+
+    didPrefillContactRef.current = true;
+    reset(prefilledContact);
+    setContactData(prefilledContact);
+  }, [authenticatedUser, reset]);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -209,16 +246,28 @@ export default function PedirPage() {
       return "Revisa tu carrito antes de pasar al formulario de contacto.";
     }
     if (currentStep === 3) {
-      return "Completa tus datos para ir a la confirmacion final.";
+      return authenticatedUser
+        ? "Puedes confirmar con los datos de tu cuenta o ajustarlos antes de continuar."
+        : "Completa tus datos para ir a la confirmacion final.";
     }
     return "Confirma para crear tu pedido real y obtener tu token de seguimiento.";
-  }, [currentStep]);
+  }, [currentStep, authenticatedUser]);
 
   const handleStepThreeSubmit = handleSubmit((values) => {
+    const normalizedPhone = values.phone.trim();
+    if (!authenticatedUser && normalizedPhone.length < 7) {
+      setError("phone", {
+        type: "manual",
+        message: "Ingresa un telefono valido.",
+      });
+      return;
+    }
+
+    clearErrors("phone");
     setContactData({
       name: values.name.trim(),
       email: values.email.trim(),
-      phone: values.phone.trim(),
+      phone: normalizedPhone,
     });
     setSubmitOrderError(null);
     setCurrentStep(4);
@@ -260,16 +309,11 @@ export default function PedirPage() {
     }
 
     const contact = contactData ?? getValues();
-    const guestData = {
-      name: contact.name?.trim() ?? "",
-      email: contact.email?.trim() ?? "",
-      phone: contact.phone?.trim() ?? "",
+    const normalizedContact = {
+      name: contact.name?.trim() || authenticatedUser?.name || "",
+      email: contact.email?.trim() || authenticatedUser?.email || "",
+      phone: contact.phone?.trim() || authenticatedUser?.phone || "",
     };
-
-    if (!guestData.name || !guestData.email || !guestData.phone) {
-      setSubmitOrderError("Completa tus datos de contacto antes de confirmar.");
-      return;
-    }
 
     const payloadItems: CreateOrderItemPayload[] = items.map((item) => {
       const flavors: CreateOrderItemFlavorPayload[] =
@@ -295,9 +339,26 @@ export default function PedirPage() {
 
     const payload: CreateOrderPayload = {
       order_day_id: selectedOrderDayId,
-      guest_data: guestData,
       items: payloadItems,
     };
+
+    if (!authenticatedUser) {
+      if (
+        !normalizedContact.name ||
+        !normalizedContact.email ||
+        !normalizedContact.phone ||
+        normalizedContact.phone.length < 7
+      ) {
+        setSubmitOrderError("Completa tus datos de contacto antes de confirmar.");
+        return;
+      }
+
+      payload.guest_data = {
+        name: normalizedContact.name,
+        email: normalizedContact.email,
+        phone: normalizedContact.phone,
+      };
+    }
 
     setSubmitOrderError(null);
     setIsSubmittingOrder(true);
@@ -453,6 +514,12 @@ export default function PedirPage() {
                   Completa tus datos para preparar la confirmacion del pedido.
                 </p>
 
+                {authenticatedUser && (
+                  <div className="mt-4 rounded-xl bg-brand-soft/70 p-3 text-xs text-brand-dark/80">
+                    Pedido autenticado: se asociara a tu cuenta y se usaran tus datos de perfil.
+                  </div>
+                )}
+
                 <form className="mt-4 space-y-4" onSubmit={(event) => event.preventDefault()}>
                   <div className="space-y-2">
                     <Label htmlFor="contact-name">Nombre</Label>
@@ -472,7 +539,9 @@ export default function PedirPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="contact-phone">Telefono</Label>
+                    <Label htmlFor="contact-phone">
+                      {authenticatedUser ? "Telefono (opcional)" : "Telefono"}
+                    </Label>
                     <Input id="contact-phone" type="text" placeholder="0999999999" {...register("phone")} />
                     {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
                   </div>
@@ -507,16 +576,20 @@ export default function PedirPage() {
 
                   <div className="rounded-xl bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
                     <p>
+                      <span className="font-medium text-brand-dark">Tipo de pedido:</span>{" "}
+                      {authenticatedUser ? "Cuenta autenticada" : "Invitado"}
+                    </p>
+                    <p>
                       <span className="font-medium text-brand-dark">Nombre:</span>{" "}
-                      {normalizedContactData.name || "-"}
+                      {contactSummary.name || "-"}
                     </p>
                     <p>
                       <span className="font-medium text-brand-dark">Correo:</span>{" "}
-                      {normalizedContactData.email || "-"}
+                      {contactSummary.email || "-"}
                     </p>
                     <p>
                       <span className="font-medium text-brand-dark">Telefono:</span>{" "}
-                      {normalizedContactData.phone || "-"}
+                      {contactSummary.phone || "-"}
                     </p>
                   </div>
                 </div>

@@ -29,7 +29,7 @@ class CreateOrderItemInput(BaseModel):
 
 class CreateOrderRequest(BaseModel):
     order_day_id: int
-    guest_data: GuestDataInput
+    guest_data: GuestDataInput | None = None
     items: list[CreateOrderItemInput] = Field(min_length=1)
 
 

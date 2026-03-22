@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +11,7 @@ import { DayPicker } from "@/components/orders/day-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
 import { useCartStore } from "@/stores/cartStore";
 
 const steps = [
@@ -48,6 +50,41 @@ const contactSchema = z.object({
 
 type ContactFormValues = z.infer<typeof contactSchema>;
 
+type OrderDayDetail = {
+  id: number;
+  date: string;
+};
+
+type CreateOrderItemFlavorPayload = {
+  flavor_id?: number;
+  name?: string;
+  extra_price?: number;
+};
+
+type CreateOrderItemPayload = {
+  product_id: number;
+  quantity: number;
+  selected_flavors?: CreateOrderItemFlavorPayload[];
+};
+
+type CreateOrderPayload = {
+  order_day_id: number;
+  guest_data: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  items: CreateOrderItemPayload[];
+};
+
+type CreateOrderResponse = {
+  id: number;
+  tracking_token: string;
+  status: string;
+  total: number;
+  created_at: string | null;
+};
+
 function formatSelectedDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
   const parsedDate = new Date(year, (month ?? 1) - 1, day ?? 1);
@@ -56,16 +93,29 @@ function formatSelectedDate(isoDate: string): string {
 }
 
 export default function PedirPage() {
+  const router = useRouter();
+
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+  const [selectedOrderDayId, setSelectedOrderDayId] = useState<number | null>(null);
+  const [isResolvingOrderDay, setIsResolvingOrderDay] = useState(false);
+  const [orderDayResolveError, setOrderDayResolveError] = useState<string | null>(null);
   const [contactData, setContactData] = useState<ContactFormValues | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [submitOrderError, setSubmitOrderError] = useState<string | null>(null);
 
   const items = useCartStore((state) => state.items);
   const totalItems = useCartStore((state) => state.totalItems);
   const totalPrice = useCartStore((state) => state.totalPrice);
+  const clearCart = useCartStore((state) => state.clearCart);
 
   const cartIsEmpty = useMemo(() => totalItems === 0, [totalItems]);
-  const canContinueFromStepOne = Boolean(selectedDate) && !cartIsEmpty;
+  const canContinueFromStepOne =
+    Boolean(selectedDate) &&
+    selectedOrderDayId !== null &&
+    !isResolvingOrderDay &&
+    !orderDayResolveError &&
+    !cartIsEmpty;
   const canContinueFromStepTwo = !cartIsEmpty;
 
   const selectedDateText = useMemo(
@@ -95,11 +145,53 @@ export default function PedirPage() {
     return getValues();
   }, [contactData, getValues]);
 
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedOrderDayId(null);
+      setOrderDayResolveError(null);
+      setIsResolvingOrderDay(false);
+      return;
+    }
+    const selectedDateValue = selectedDate;
+
+    let isMounted = true;
+
+    async function resolveOrderDayId() {
+      setIsResolvingOrderDay(true);
+      setOrderDayResolveError(null);
+      setSelectedOrderDayId(null);
+
+      try {
+        const day = await api.get<OrderDayDetail>(
+          `/order-days/${encodeURIComponent(selectedDateValue)}`
+        );
+        if (!isMounted) return;
+        setSelectedOrderDayId(day.id);
+      } catch (error) {
+        if (!isMounted) return;
+        setOrderDayResolveError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo validar el dia seleccionado."
+        );
+      } finally {
+        if (!isMounted) return;
+        setIsResolvingOrderDay(false);
+      }
+    }
+
+    void resolveOrderDayId();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate]);
+
   const continueButtonLabel = useMemo(() => {
     if (currentStep === 1) return "Continuar a productos";
     if (currentStep === 2) return "Continuar a contacto";
     if (currentStep === 3) return "Continuar a confirmacion";
-    return "Base lista";
+    return "Paso final";
   }, [currentStep]);
 
   const continueDisabled = useMemo(() => {
@@ -111,19 +203,24 @@ export default function PedirPage() {
 
   const helperText = useMemo(() => {
     if (currentStep === 1) {
-      return "Para continuar debes elegir un dia y tener productos en el carrito.";
+      return "Para continuar debes elegir un dia valido y tener productos en el carrito.";
     }
     if (currentStep === 2) {
       return "Revisa tu carrito antes de pasar al formulario de contacto.";
     }
     if (currentStep === 3) {
-      return "Completa tus datos para ir al resumen de confirmacion.";
+      return "Completa tus datos para ir a la confirmacion final.";
     }
-    return "El envio real de la orden se implementara en el siguiente avance.";
+    return "Confirma para crear tu pedido real y obtener tu token de seguimiento.";
   }, [currentStep]);
 
   const handleStepThreeSubmit = handleSubmit((values) => {
-    setContactData(values);
+    setContactData({
+      name: values.name.trim(),
+      email: values.email.trim(),
+      phone: values.phone.trim(),
+    });
+    setSubmitOrderError(null);
     setCurrentStep(4);
   });
 
@@ -146,6 +243,77 @@ export default function PedirPage() {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep((currentStep - 1) as 1 | 2 | 3);
+    }
+  };
+
+  const handleConfirmOrder = async () => {
+    if (isSubmittingOrder) return;
+
+    if (!selectedOrderDayId) {
+      setSubmitOrderError("No se pudo resolver el dia de pedido seleccionado.");
+      return;
+    }
+
+    if (cartIsEmpty) {
+      setSubmitOrderError("Tu carrito esta vacio.");
+      return;
+    }
+
+    const contact = contactData ?? getValues();
+    const guestData = {
+      name: contact.name?.trim() ?? "",
+      email: contact.email?.trim() ?? "",
+      phone: contact.phone?.trim() ?? "",
+    };
+
+    if (!guestData.name || !guestData.email || !guestData.phone) {
+      setSubmitOrderError("Completa tus datos de contacto antes de confirmar.");
+      return;
+    }
+
+    const payloadItems: CreateOrderItemPayload[] = items.map((item) => {
+      const flavors: CreateOrderItemFlavorPayload[] =
+        item.selectedFlavors
+          ?.map((flavor) => ({
+            flavor_id: flavor.flavorId,
+            name: flavor.name,
+            extra_price: flavor.extraPrice ?? 0,
+          }))
+          .filter((flavor) => flavor.flavor_id !== undefined || Boolean(flavor.name)) ?? [];
+
+      const payloadItem: CreateOrderItemPayload = {
+        product_id: item.productId,
+        quantity: item.quantity,
+      };
+
+      if (flavors.length > 0) {
+        payloadItem.selected_flavors = flavors;
+      }
+
+      return payloadItem;
+    });
+
+    const payload: CreateOrderPayload = {
+      order_day_id: selectedOrderDayId,
+      guest_data: guestData,
+      items: payloadItems,
+    };
+
+    setSubmitOrderError(null);
+    setIsSubmittingOrder(true);
+
+    try {
+      const createdOrder = await api.post<CreateOrderResponse>("/orders", payload);
+      clearCart();
+      router.push(`/pedido/${encodeURIComponent(createdOrder.tracking_token)}`);
+    } catch (error) {
+      setSubmitOrderError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo confirmar el pedido. Intenta nuevamente."
+      );
+    } finally {
+      setIsSubmittingOrder(false);
     }
   };
 
@@ -199,16 +367,20 @@ export default function PedirPage() {
                   Selecciona una fecha habilitada para continuar con tu pedido.
                 </p>
 
-                <DayPicker
-                  className="mt-4"
-                  value={selectedDate}
-                  onChange={(date) => setSelectedDate(date)}
-                />
+                <DayPicker className="mt-4" value={selectedDate} onChange={setSelectedDate} />
 
                 <div className="mt-4 rounded-xl bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
                   <span className="font-medium text-brand-dark">Fecha seleccionada:</span>{" "}
                   {selectedDateText}
                 </div>
+
+                {isResolvingOrderDay && (
+                  <p className="mt-2 text-xs text-brand-dark/70">Validando disponibilidad del dia...</p>
+                )}
+
+                {orderDayResolveError && (
+                  <p className="mt-2 text-xs text-destructive">{orderDayResolveError}</p>
+                )}
               </div>
             ) : null}
 
@@ -314,7 +486,7 @@ export default function PedirPage() {
                   Paso 4: Confirmacion
                 </h2>
                 <p className="mt-1 text-sm text-brand-dark/75">
-                  Placeholder listo. En el siguiente avance enviaremos esta data al backend.
+                  Revisa el resumen y confirma para crear tu pedido real.
                 </p>
 
                 <div className="mt-4 space-y-3">
@@ -348,6 +520,23 @@ export default function PedirPage() {
                     </p>
                   </div>
                 </div>
+
+                {submitOrderError && (
+                  <div className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                    {submitOrderError}
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  className="mt-4 w-full bg-brand-primary text-white hover:bg-brand-primary/90"
+                  disabled={isSubmittingOrder || cartIsEmpty || selectedOrderDayId === null}
+                  onClick={() => {
+                    void handleConfirmOrder();
+                  }}
+                >
+                  {isSubmittingOrder ? "Confirmando pedido..." : "Confirmar pedido"}
+                </Button>
               </div>
             ) : null}
           </article>
@@ -376,9 +565,7 @@ export default function PedirPage() {
                       {currencyFormatter.format(totalPrice)}
                     </span>
                   </p>
-                  <p className="text-xs text-brand-dark/70">
-                    {items.length} linea(s) en carrito.
-                  </p>
+                  <p className="text-xs text-brand-dark/70">{items.length} linea(s) en carrito.</p>
                 </div>
               )}
             </article>
@@ -394,15 +581,22 @@ export default function PedirPage() {
                   Volver
                 </Button>
               )}
-              <Button
-                type="button"
-                className="w-full bg-brand-primary text-white hover:bg-brand-primary/90"
-                disabled={continueDisabled}
-                onClick={handleContinue}
-              >
-                {continueButtonLabel}
-              </Button>
-              <p className="mt-2 text-xs text-brand-dark/70">{helperText}</p>
+
+              {currentStep < 4 && (
+                <>
+                  <Button
+                    type="button"
+                    className="w-full bg-brand-primary text-white hover:bg-brand-primary/90"
+                    disabled={continueDisabled}
+                    onClick={handleContinue}
+                  >
+                    {continueButtonLabel}
+                  </Button>
+                  <p className="mt-2 text-xs text-brand-dark/70">{helperText}</p>
+                </>
+              )}
+
+              {currentStep === 4 && <p className="text-xs text-brand-dark/70">{helperText}</p>}
             </article>
           </aside>
         </div>

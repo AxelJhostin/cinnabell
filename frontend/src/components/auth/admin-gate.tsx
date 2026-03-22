@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 
 type AuthMeResponse = {
@@ -51,21 +51,20 @@ export function AdminGate({ children }: AdminGateProps) {
         setStatus("allowed");
       } catch (error) {
         if (!isMounted) return;
-        const message =
-          error instanceof Error ? error.message : "No se pudo validar tu sesion.";
-
-        if (message.toLowerCase().includes("no autenticado")) {
+        if (error instanceof ApiError && error.status === 401) {
           logoutLocal();
           router.replace("/login?next=/admin");
           return;
         }
 
-        if (message.toLowerCase().includes("no autorizado")) {
+        if (error instanceof ApiError && error.status === 403) {
           setStatus("forbidden");
           setErrorMessage("No tienes permisos de administrador para acceder a esta area.");
           return;
         }
 
+        const message =
+          error instanceof Error ? error.message : "No se pudo validar tu sesion.";
         setStatus("error");
         setErrorMessage(message);
       }

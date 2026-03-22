@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 
 export type UserRole = "client" | "admin";
 
@@ -67,7 +67,18 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         const user = await api.get<AuthUser>("/auth/me");
         set({ user, isAuthenticated: true });
         return user;
-      } catch {
+      } catch (error) {
+        if (!(error instanceof ApiError && error.status === 401)) {
+          const shouldLog =
+            error instanceof ApiError
+              ? error.isNetworkError || error.status === null || error.status >= 500
+              : true;
+
+          if (shouldLog) {
+            console.error("Error real al reconstruir sesion en /auth/me", error);
+          }
+        }
+
         set({ user: null, isAuthenticated: false });
         return null;
       } finally {

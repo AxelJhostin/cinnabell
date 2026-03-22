@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_optional_current_user
 from app.core.database import get_db
+from app.core.money import MONEY_ZERO, quantize_money, to_decimal, to_money_float
 from app.models.order import Order, OrderItem, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
 from app.models.product import Product
@@ -101,15 +102,25 @@ def create_order(
         db.add(order)
         db.flush()
 
-        total = 0.0
+        total = MONEY_ZERO
         for item in payload.items:
             product = product_by_id[item.product_id]
-            flavors_payload = [flavor.model_dump(exclude_none=True) for flavor in item.selected_flavors]
-            flavors_extra = sum(flavor.extra_price for flavor in item.selected_flavors)
+            flavors_payload: list[dict[str, object]] = []
+            flavors_extra = MONEY_ZERO
+            for flavor in item.selected_flavors:
+                flavor_extra_price = quantize_money(flavor.extra_price)
+                flavors_extra += flavor_extra_price
+                flavors_payload.append(
+                    {
+                        "flavor_id": flavor.flavor_id,
+                        "name": flavor.name,
+                        "extra_price": to_money_float(flavor_extra_price),
+                    }
+                )
 
-            unit_price = round(product.price + flavors_extra, 2)
-            subtotal = round(unit_price * item.quantity, 2)
-            total += subtotal
+            unit_price = quantize_money(to_decimal(product.price) + flavors_extra)
+            subtotal = quantize_money(unit_price * item.quantity)
+            total = quantize_money(total + subtotal)
 
             order_item = OrderItem(
                 order_id=order.id,
@@ -121,7 +132,7 @@ def create_order(
             )
             db.add(order_item)
 
-        order.total = round(total, 2)
+        order.total = quantize_money(total)
         order_day.current_orders += 1
         if get_available_slots(order_day) <= 0:
             order_day.is_open = False

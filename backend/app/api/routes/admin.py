@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_admin
 from app.core.database import get_db
+from app.core.money import MONEY_ZERO, quantize_money, to_decimal, to_money_float
 from app.models.order import Order, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
 from app.models.product import Product
@@ -68,15 +69,15 @@ def build_selected_flavors(raw_flavors: object) -> list[AdminOrderItemSelectedFl
         name = name_raw if isinstance(name_raw, str) else None
 
         try:
-            extra_price = float(extra_price_raw)
+            extra_price = to_money_float(extra_price_raw)
         except (TypeError, ValueError):
-            extra_price = 0
+            extra_price = 0.0
 
         normalized_flavors.append(
             AdminOrderItemSelectedFlavorResponse(
                 flavor_id=flavor_id,
                 name=name,
-                extra_price=max(extra_price, 0),
+                extra_price=max(extra_price, 0.0),
             )
         )
 
@@ -135,11 +136,11 @@ def get_admin_dashboard_summary(
     )
 
     today_revenue = (
-        db.query(func.coalesce(func.sum(Order.total), 0.0))
+        db.query(func.coalesce(func.sum(Order.total), MONEY_ZERO))
         .join(OrderDay, Order.order_day_id == OrderDay.id)
         .filter(OrderDay.date == today)
         .scalar()
-        or 0.0
+        or MONEY_ZERO
     )
 
     today_order_days = db.query(OrderDay).filter(OrderDay.date == today).all()
@@ -152,7 +153,7 @@ def get_admin_dashboard_summary(
         today_date=today,
         today_orders_count=int(today_orders_count),
         today_remaining_capacity=int(today_remaining_capacity),
-        today_revenue=round(float(today_revenue), 2),
+        today_revenue=to_money_float(today_revenue),
     )
 
 
@@ -164,7 +165,7 @@ def get_admin_reports_summary(
     today = date.today()
 
     total_orders = db.query(func.count(Order.id)).scalar() or 0
-    total_revenue = db.query(func.coalesce(func.sum(Order.total), 0.0)).scalar() or 0.0
+    total_revenue = db.query(func.coalesce(func.sum(Order.total), MONEY_ZERO)).scalar() or MONEY_ZERO
 
     orders_today = (
         db.query(func.count(Order.id))
@@ -174,21 +175,24 @@ def get_admin_reports_summary(
         or 0
     )
     revenue_today = (
-        db.query(func.coalesce(func.sum(Order.total), 0.0))
+        db.query(func.coalesce(func.sum(Order.total), MONEY_ZERO))
         .join(OrderDay, Order.order_day_id == OrderDay.id)
         .filter(OrderDay.date == today)
         .scalar()
-        or 0.0
+        or MONEY_ZERO
     )
 
-    average_order_value = float(total_revenue) / int(total_orders) if int(total_orders) > 0 else 0.0
+    if int(total_orders) > 0:
+        average_order_value = quantize_money(to_decimal(total_revenue) / int(total_orders))
+    else:
+        average_order_value = MONEY_ZERO
 
     return AdminReportSummaryResponse(
         total_orders=int(total_orders),
-        total_revenue=round(float(total_revenue), 2),
-        average_order_value=round(float(average_order_value), 2),
+        total_revenue=to_money_float(total_revenue),
+        average_order_value=to_money_float(average_order_value),
         orders_today=int(orders_today),
-        revenue_today=round(float(revenue_today), 2),
+        revenue_today=to_money_float(revenue_today),
     )
 
 
@@ -286,7 +290,7 @@ def update_admin_product(
     updates = payload.model_dump(exclude_unset=True)
 
     if "price" in updates:
-        new_price = float(updates["price"])
+        new_price = quantize_money(updates["price"])
         if new_price < 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -338,7 +342,7 @@ def get_admin_customers(
         db.query(
             Order.user_id.label("user_id"),
             func.count(Order.id).label("orders_count"),
-            func.coalesce(func.sum(Order.total), 0.0).label("total_spent"),
+            func.coalesce(func.sum(Order.total), MONEY_ZERO).label("total_spent"),
             func.max(Order.created_at).label("last_order_date"),
         )
         .filter(Order.user_id.in_(client_ids))
@@ -349,7 +353,7 @@ def get_admin_customers(
     metrics_by_user_id = {
         int(row.user_id): {
             "orders_count": int(row.orders_count or 0),
-            "total_spent": round(float(row.total_spent or 0.0), 2),
+            "total_spent": to_money_float(row.total_spent or MONEY_ZERO),
             "last_order_date": row.last_order_date,
         }
         for row in metric_rows
@@ -410,7 +414,7 @@ def get_admin_orders(
                 id=order.id,
                 tracking_token=order.tracking_token,
                 status=order.status,
-                total=round(float(order.total), 2),
+                total=to_money_float(order.total),
                 created_at=order.created_at,
                 guest_data=build_guest_data_response(order.guest_data),
                 order_day=build_order_day_response(order.order_day),
@@ -445,8 +449,8 @@ def get_admin_order_detail(
             id=item.id,
             product_id=item.product_id,
             quantity=item.quantity,
-            unit_price=round(float(item.unit_price), 2),
-            subtotal=round(float(item.subtotal), 2),
+            unit_price=to_money_float(item.unit_price),
+            subtotal=to_money_float(item.subtotal),
             selected_flavors=build_selected_flavors(item.selected_flavors),
         )
         for item in order.items
@@ -461,7 +465,7 @@ def get_admin_order_detail(
         id=order.id,
         tracking_token=order.tracking_token,
         status=order.status,
-        total=round(float(order.total), 2),
+        total=to_money_float(order.total),
         created_at=order.created_at,
         guest_data=build_guest_data_response(order.guest_data),
         order_day=build_order_day_response(order.order_day),

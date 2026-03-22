@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum, JSON
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Enum, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -20,7 +20,7 @@ class Order(Base):
     guest_data = Column(JSON, nullable=True)
     order_day_id = Column(Integer, ForeignKey("order_days.id"), nullable=False)
     status = Column(Enum(OrderStatus), default=OrderStatus.pendiente, nullable=False)
-    total = Column(Float, nullable=False)
+    total = Column(Numeric(10, 2), nullable=False)
     tracking_token = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -37,8 +37,8 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     selected_flavors = Column(JSON, nullable=True)
-    unit_price = Column(Float, nullable=False)
-    subtotal = Column(Float, nullable=False)
+    unit_price = Column(Numeric(10, 2), nullable=False)
+    subtotal = Column(Numeric(10, 2), nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")

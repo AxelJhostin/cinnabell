@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import enum
@@ -15,7 +15,7 @@ class Product(Base):
     name = Column(String, nullable=False)
     slug = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
     image_url = Column(String, nullable=True)
     category = Column(Enum(ProductCategory), nullable=False)
     is_active = Column(Boolean, default=True)
@@ -29,6 +29,6 @@ class ProductFlavor(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     flavor_name = Column(String, nullable=False)
-    extra_price = Column(Float, default=0.0)
+    extra_price = Column(Numeric(10, 2), default=0.0)
 
     product = relationship("Product", back_populates="flavors")

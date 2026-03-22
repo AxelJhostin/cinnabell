@@ -61,13 +61,15 @@ def login_user(
 
     token = create_access_token({"sub": str(user.id), "role": user.role.value})
     max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    is_production = settings.ENVIRONMENT.lower() == "production"
+    cookie_samesite = "none" if is_production else "lax"
 
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE_NAME,
         value=token,
         httponly=True,
-        samesite="lax",
-        secure=settings.ENVIRONMENT == "production",
+        samesite=cookie_samesite,
+        secure=is_production,
         max_age=max_age,
         expires=max_age,
         path="/",

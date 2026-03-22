@@ -9,9 +9,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
+frontend_origin = settings.FRONTEND_URL.rstrip("/")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=[frontend_origin],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

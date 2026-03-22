@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,6 +14,7 @@ export type OrderDayAvailability = {
   is_open: boolean;
   max_capacity: number;
   current_orders: number;
+  available_slots?: number;
   is_special: boolean;
   note: string | null;
 };
@@ -82,7 +83,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
       }
     }
 
-    loadOrderDays();
+    void loadOrderDays();
 
     return () => {
       isMounted = false;
@@ -94,6 +95,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
   const handleSelect = (day: OrderDayAvailability) => {
     const capacityMeta = getCapacityMeta({
       isOpen: day.is_open,
+      availableSlots: day.available_slots,
       currentOrders: day.current_orders,
       maxCapacity: day.max_capacity,
     });
@@ -153,6 +155,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
       {days.map((day) => {
         const capacityMeta = getCapacityMeta({
           isOpen: day.is_open,
+          availableSlots: day.available_slots,
           currentOrders: day.current_orders,
           maxCapacity: day.max_capacity,
         });
@@ -186,6 +189,7 @@ export function DayPicker({ value, onChange, className }: DayPickerProps) {
             <div className="mt-3">
               <CapacityBadge
                 isOpen={day.is_open}
+                availableSlots={day.available_slots}
                 currentOrders={day.current_orders}
                 maxCapacity={day.max_capacity}
               />

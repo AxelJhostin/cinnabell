@@ -1,12 +1,13 @@
-import { Badge } from "@/components/ui/badge";
+﻿import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type CapacityState = "available" | "low" | "full" | "closed";
 
 type CapacityBadgeProps = {
   isOpen: boolean;
-  currentOrders: number;
-  maxCapacity: number;
+  availableSlots?: number | null;
+  currentOrders?: number;
+  maxCapacity?: number;
   className?: string;
 };
 
@@ -18,26 +19,53 @@ type CapacityMeta = {
 
 export function getCapacityMeta({
   isOpen,
+  availableSlots,
   currentOrders,
   maxCapacity,
-}: Pick<CapacityBadgeProps, "isOpen" | "currentOrders" | "maxCapacity">): CapacityMeta {
-  const safeMaxCapacity = Math.max(0, maxCapacity);
-  const availableSlots = Math.max(0, safeMaxCapacity - currentOrders);
+}: Pick<
+  CapacityBadgeProps,
+  "isOpen" | "availableSlots" | "currentOrders" | "maxCapacity"
+>): CapacityMeta {
+  const safeMaxCapacity =
+    typeof maxCapacity === "number" ? Math.max(0, maxCapacity) : 0;
+  const resolvedAvailableSlots =
+    typeof availableSlots === "number"
+      ? Math.max(0, availableSlots)
+      : Math.max(0, safeMaxCapacity - (currentOrders ?? 0));
 
   if (!isOpen) {
-    return { state: "closed", label: "Cerrado", availableSlots };
+    return {
+      state: "closed",
+      label: "Cerrado",
+      availableSlots: resolvedAvailableSlots,
+    };
   }
 
-  if (safeMaxCapacity <= 0 || availableSlots <= 0) {
-    return { state: "full", label: "Sin cupos", availableSlots };
+  if (resolvedAvailableSlots <= 0) {
+    return {
+      state: "full",
+      label: "Sin cupos",
+      availableSlots: resolvedAvailableSlots,
+    };
   }
 
-  const hasLowCapacity = availableSlots <= 5 || availableSlots / safeMaxCapacity <= 0.25;
+  const hasLowCapacity =
+    resolvedAvailableSlots <= 5 ||
+    (safeMaxCapacity > 0 && resolvedAvailableSlots / safeMaxCapacity <= 0.25);
+
   if (hasLowCapacity) {
-    return { state: "low", label: "Pocos cupos", availableSlots };
+    return {
+      state: "low",
+      label: "Pocos cupos",
+      availableSlots: resolvedAvailableSlots,
+    };
   }
 
-  return { state: "available", label: "Disponible", availableSlots };
+  return {
+    state: "available",
+    label: "Disponible",
+    availableSlots: resolvedAvailableSlots,
+  };
 }
 
 const STATE_CLASSNAME: Record<CapacityState, string> = {
@@ -49,14 +77,21 @@ const STATE_CLASSNAME: Record<CapacityState, string> = {
 
 export function CapacityBadge({
   isOpen,
+  availableSlots,
   currentOrders,
   maxCapacity,
   className,
 }: CapacityBadgeProps) {
-  const meta = getCapacityMeta({ isOpen, currentOrders, maxCapacity });
+  const meta = getCapacityMeta({
+    isOpen,
+    availableSlots,
+    currentOrders,
+    maxCapacity,
+  });
+
   const slotsLabel =
     meta.state === "available" || meta.state === "low"
-      ? ` • ${meta.availableSlots} cupos`
+      ? ` - ${meta.availableSlots} cupos`
       : "";
 
   return (

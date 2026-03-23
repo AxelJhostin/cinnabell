@@ -39,6 +39,8 @@ type AdminOrderStatus =
   | "ENTREGADO"
   | "CANCELADO";
 
+type AdminOrderScope = "recent" | "today";
+
 const statusOptions: Array<{ label: string; value: "ALL" | AdminOrderStatus }> = [
   { label: "Todos", value: "ALL" },
   { label: "Pendiente", value: "PENDIENTE" },
@@ -91,6 +93,7 @@ function formatDateTime(value: string | null): string {
 export default function AdminPedidosPage() {
   const [orders, setOrders] = useState<AdminOrderListItem[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<"ALL" | AdminOrderStatus>("ALL");
+  const [selectedScope, setSelectedScope] = useState<AdminOrderScope>("recent");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -103,10 +106,12 @@ export default function AdminPedidosPage() {
       setError(null);
 
       try {
-        const endpoint =
-          selectedStatus === "ALL"
-            ? "/admin/orders"
-            : `/admin/orders?status=${encodeURIComponent(selectedStatus)}`;
+        const params = new URLSearchParams();
+        params.set("scope", selectedScope);
+        if (selectedStatus !== "ALL") {
+          params.set("status", selectedStatus);
+        }
+        const endpoint = `/admin/orders?${params.toString()}`;
 
         const data = await api.get<AdminOrderListItem[]>(endpoint);
         if (!isMounted) return;
@@ -130,7 +135,7 @@ export default function AdminPedidosPage() {
     return () => {
       isMounted = false;
     };
-  }, [retryKey, selectedStatus]);
+  }, [retryKey, selectedStatus, selectedScope]);
 
   const hasOrders = useMemo(() => orders.length > 0, [orders]);
 
@@ -142,12 +147,55 @@ export default function AdminPedidosPage() {
             Cinnabell Admin
           </p>
           <h1 className="mt-2 font-display text-4xl font-semibold text-brand-dark sm:text-5xl">
-            Pedidos del dia
+            Pedidos
           </h1>
           <p className="mt-3 text-sm text-brand-dark/80 sm:text-base">
-            Vista operativa de pedidos con filtro por estado.
+            Vista operativa con filtros por estado y alcance.
           </p>
         </header>
+
+        <Card className="bg-white ring-brand-accent/60">
+          <CardHeader>
+            <CardTitle className="font-display text-2xl text-brand-dark">
+              Alcance de pedidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={selectedScope === "recent" ? "default" : "outline"}
+                className={
+                  selectedScope === "recent"
+                    ? "bg-brand-primary text-white hover:bg-brand-primary/90"
+                    : "border-brand-accent text-brand-dark hover:bg-brand-soft/60"
+                }
+                onClick={() => setSelectedScope("recent")}
+              >
+                Recientes (por creación)
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={selectedScope === "today" ? "default" : "outline"}
+                className={
+                  selectedScope === "today"
+                    ? "bg-brand-primary text-white hover:bg-brand-primary/90"
+                    : "border-brand-accent text-brand-dark hover:bg-brand-soft/60"
+                }
+                onClick={() => setSelectedScope("today")}
+              >
+                Día de pedido: hoy
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-brand-dark/70">
+              {selectedScope === "recent"
+                ? "Muestra pedidos recientes creados, incluso si su día de entrega es futuro."
+                : "Muestra solo pedidos cuyo día de pedido coincide con hoy."}
+            </p>
+          </CardContent>
+        </Card>
 
         <Card className="bg-white ring-brand-accent/60">
           <CardHeader>
@@ -208,7 +256,9 @@ export default function AdminPedidosPage() {
           <Card className="bg-white ring-brand-accent/60">
             <CardContent className="pt-5">
               <p className="text-sm text-brand-dark/80">
-                No hay pedidos para este filtro en el dia actual.
+                {selectedScope === "today"
+                  ? "No hay pedidos para este filtro con día de pedido hoy."
+                  : "No hay pedidos para este filtro en los registros recientes."}
               </p>
             </CardContent>
           </Card>

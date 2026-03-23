@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -91,7 +92,6 @@ function formatSelectedDate(isoDate: string): string {
 
 export default function PedirPage() {
   const router = useRouter();
-  const sessionCheckedRef = useRef(false);
   const didPrefillContactRef = useRef(false);
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
@@ -107,10 +107,11 @@ export default function PedirPage() {
   const totalItems = useCartStore((state) => state.totalItems);
   const totalPrice = useCartStore((state) => state.totalPrice);
   const clearCart = useCartStore((state) => state.clearCart);
+  const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const removeItem = useCartStore((state) => state.removeItem);
   const hasHydratedCart = useCartStore((state) => state.hasHydrated);
   const authUser = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const fetchMe = useAuthStore((state) => state.fetchMe);
 
   const cartIsEmpty = useMemo(
     () => (hasHydratedCart ? totalItems === 0 : true),
@@ -166,12 +167,6 @@ export default function PedirPage() {
     }),
     [normalizedContactData, authenticatedUser]
   );
-
-  useEffect(() => {
-    if (sessionCheckedRef.current) return;
-    sessionCheckedRef.current = true;
-    void fetchMe();
-  }, [fetchMe]);
 
   useEffect(() => {
     if (!authenticatedUser || didPrefillContactRef.current) return;
@@ -514,6 +509,43 @@ export default function PedirPage() {
                               Sabores: {item.selectedFlavors.map((flavor) => flavor.name).join(", ")}
                             </p>
                           )}
+                          <div className="mt-3 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1 rounded-md border border-brand-accent bg-brand-soft/70 p-1">
+                              <Button
+                                type="button"
+                                size="icon-xs"
+                                variant="ghost"
+                                className="text-brand-dark"
+                                onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
+                                aria-label={`Disminuir cantidad de ${item.name}`}
+                              >
+                                <Minus />
+                              </Button>
+                              <span className="min-w-6 text-center text-xs font-medium">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                type="button"
+                                size="icon-xs"
+                                variant="ghost"
+                                className="text-brand-dark"
+                                onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
+                                aria-label={`Aumentar cantidad de ${item.name}`}
+                              >
+                                <Plus />
+                              </Button>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-brand-dark/80 hover:text-destructive"
+                              onClick={() => removeItem(item.lineId)}
+                            >
+                              <Trash2 />
+                              Eliminar
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}

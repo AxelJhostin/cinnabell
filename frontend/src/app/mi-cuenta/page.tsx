@@ -51,8 +51,8 @@ export default function MiCuentaPage() {
         </h1>
         <p className="mt-3 text-sm text-brand-dark/80 sm:text-base">
           {user?.name
-            ? `Bienvenido, ${user.name}. Muy pronto aqui podras revisar tus pedidos y gestionar tus datos de cuenta.`
-            : "Bienvenido a tu espacio personal. Muy pronto aqui podras revisar tus pedidos y gestionar tus datos de cuenta."}
+            ? `Bienvenido, ${user.name}. Desde aqui puedes revisar el estado y el historial de tus pedidos.`
+            : "Bienvenido a tu espacio personal. Desde aqui puedes revisar el estado y el historial de tus pedidos."}
         </p>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -61,6 +61,9 @@ export default function MiCuentaPage() {
               <Link href="/admin">Volver al panel admin</Link>
             </Button>
           )}
+          <Button asChild variant="outline" className="bg-transparent">
+            <Link href="/mi-cuenta/pedidos">Ver mis pedidos</Link>
+          </Button>
           <Button asChild className="bg-brand-primary text-white hover:bg-brand-primary/90">
             <Link href="/menu">Ir al menu</Link>
           </Button>

@@ -29,7 +29,8 @@ type AuthStore = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  fetchMe: () => Promise<AuthUser | null>;
+  hasCheckedSession: boolean;
+  fetchMe: (options?: { force?: boolean }) => Promise<AuthUser | null>;
   login: (payload: LoginPayload) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   logout: () => Promise<void>;
@@ -60,12 +61,19 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     user: null,
     isAuthenticated: false,
     isLoading: false,
+    hasCheckedSession: false,
 
-    fetchMe: async () => {
+    fetchMe: async (options) => {
+      const shouldSkipRequest =
+        !options?.force && get().hasCheckedSession && !get().isAuthenticated;
+      if (shouldSkipRequest) {
+        return null;
+      }
+
       startLoading();
       try {
         const user = await api.get<AuthUser>("/auth/me");
-        set({ user, isAuthenticated: true });
+        set({ user, isAuthenticated: true, hasCheckedSession: true });
         return user;
       } catch (error) {
         if (!(error instanceof ApiError && error.status === 401)) {
@@ -79,7 +87,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           }
         }
 
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, hasCheckedSession: true });
         return null;
       } finally {
         stopLoading();
@@ -90,7 +98,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       startLoading();
       try {
         await api.post<{ message: string }>("/auth/login", payload);
-        const user = await get().fetchMe();
+        const user = await get().fetchMe({ force: true });
 
         if (!user) {
           throw new Error("No se pudo recuperar la sesión del usuario.");
@@ -127,6 +135,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         set({
           user: null,
           isAuthenticated: false,
+          hasCheckedSession: true,
         });
         stopLoading();
       }
@@ -136,6 +145,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       set({
         user: null,
         isAuthenticated: false,
+        hasCheckedSession: true,
       });
     },
   };

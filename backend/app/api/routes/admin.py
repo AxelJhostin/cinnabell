@@ -1,5 +1,7 @@
 ﻿from datetime import date
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -434,6 +436,7 @@ def get_admin_orders(
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
     status: OrderStatus | None = Query(default=None),
+    scope: Literal["recent", "today"] = Query(default="recent"),
 ) -> list[AdminOrderListItemResponse]:
     today = date.today()
 
@@ -444,8 +447,10 @@ def get_admin_orders(
             selectinload(Order.items),
         )
         .join(OrderDay, Order.order_day_id == OrderDay.id)
-        .filter(OrderDay.date == today)
     )
+    if scope == "today":
+        query = query.filter(OrderDay.date == today)
+
     if status is not None:
         query = query.filter(Order.status == status)
 

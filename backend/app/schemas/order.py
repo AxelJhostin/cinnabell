@@ -89,3 +89,13 @@ class TrackOrderResponse(BaseModel):
     status_log: list[OrderStatusLogTrackingResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MyOrderListItemResponse(BaseModel):
+    id: int
+    tracking_token: str
+    status: OrderStatus
+    total: float
+    created_at: datetime | None = None
+    order_day: OrderDayTrackingResponse
+    items_count: int

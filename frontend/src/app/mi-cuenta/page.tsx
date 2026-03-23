@@ -16,6 +16,7 @@ export default function MiCuentaPage() {
   const isLoading = useAuthStore((state) => state.isLoading);
   const fetchMe = useAuthStore((state) => state.fetchMe);
   const logout = useAuthStore((state) => state.logout);
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (sessionCheckedRef.current) return;
@@ -55,6 +56,11 @@ export default function MiCuentaPage() {
         </p>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+          {isAdmin && (
+            <Button asChild variant="outline" className="bg-transparent">
+              <Link href="/admin">Volver al panel admin</Link>
+            </Button>
+          )}
           <Button asChild className="bg-brand-primary text-white hover:bg-brand-primary/90">
             <Link href="/menu">Ir al menu</Link>
           </Button>

@@ -118,6 +118,22 @@ class AdminOrderDayUpdateRequest(BaseModel):
         return self
 
 
+class AdminOrderDayCreateRequest(BaseModel):
+    date: date
+    is_open: bool = True
+    max_capacity: int = Field(default=30, ge=0)
+    is_special: bool = False
+    note: str | None = Field(default=None, max_length=255)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    @model_validator(mode="after")
+    def validate_open_day_capacity(self) -> "AdminOrderDayCreateRequest":
+        if self.is_open and self.max_capacity <= 0:
+            raise ValueError("Un dia abierto debe tener capacidad mayor a 0")
+        return self
+
+
 class AdminProductManagementResponse(BaseModel):
     id: int
     name: str

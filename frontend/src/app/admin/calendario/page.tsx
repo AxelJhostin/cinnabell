@@ -40,6 +40,28 @@ type AdminOrderDayPatchPayload = {
   note?: string | null;
 };
 
+type AdminOrderDayCreatePayload = {
+  date: string;
+  is_open: boolean;
+  max_capacity: number;
+  is_special: boolean;
+  note?: string | null;
+};
+
+type CreateDraft = {
+  date: string;
+  is_open: boolean;
+  max_capacity: string;
+  is_special: boolean;
+  note: string;
+};
+
+type CreateFeedback = {
+  isSubmitting: boolean;
+  error: string | null;
+  success: string | null;
+};
+
 const dateFormatter = new Intl.DateTimeFormat("es-EC", {
   day: "2-digit",
   month: "long",
@@ -77,6 +99,18 @@ export default function AdminCalendarioPage() {
   const [days, setDays] = useState<AdminOrderDay[]>([]);
   const [drafts, setDrafts] = useState<Record<number, AdminOrderDayDraft>>({});
   const [rowFeedback, setRowFeedback] = useState<Record<number, RowFeedback>>({});
+  const [createDraft, setCreateDraft] = useState<CreateDraft>({
+    date: "",
+    is_open: true,
+    max_capacity: "30",
+    is_special: false,
+    note: "",
+  });
+  const [createFeedback, setCreateFeedback] = useState<CreateFeedback>({
+    isSubmitting: false,
+    error: null,
+    success: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -147,6 +181,66 @@ export default function AdminCalendarioPage() {
         ...patch,
       },
     }));
+  }
+
+  async function handleCreateDay() {
+    const parsedCapacity = Number(createDraft.max_capacity);
+    if (!createDraft.date) {
+      setCreateFeedback({
+        isSubmitting: false,
+        error: "Debes seleccionar una fecha para crear el dia.",
+        success: null,
+      });
+      return;
+    }
+
+    if (!Number.isInteger(parsedCapacity) || parsedCapacity < 0) {
+      setCreateFeedback({
+        isSubmitting: false,
+        error: "La capacidad maxima debe ser un numero entero mayor o igual a 0.",
+        success: null,
+      });
+      return;
+    }
+
+    const payload: AdminOrderDayCreatePayload = {
+      date: createDraft.date,
+      is_open: createDraft.is_open,
+      max_capacity: parsedCapacity,
+      is_special: createDraft.is_special,
+      note: normalizeNote(createDraft.note) || undefined,
+    };
+
+    setCreateFeedback({ isSubmitting: true, error: null, success: null });
+
+    try {
+      const createdDay = await api.post<AdminOrderDay>("/admin/order-days", payload);
+      setDays((current) =>
+        [...current, createdDay].sort((a, b) => a.date.localeCompare(b.date))
+      );
+      setDrafts((current) => ({ ...current, [createdDay.id]: toDraft(createdDay) }));
+      setCreateDraft({
+        date: "",
+        is_open: true,
+        max_capacity: "30",
+        is_special: false,
+        note: "",
+      });
+      setCreateFeedback({
+        isSubmitting: false,
+        error: null,
+        success: "Dia de pedido creado correctamente.",
+      });
+    } catch (requestError) {
+      setCreateFeedback({
+        isSubmitting: false,
+        error:
+          requestError instanceof Error
+            ? requestError.message
+            : "No se pudo crear el dia de pedido.",
+        success: null,
+      });
+    }
   }
 
   async function handleSaveRow(orderDay: AdminOrderDay) {
@@ -244,6 +338,119 @@ export default function AdminCalendarioPage() {
             Actualizar lista
           </Button>
         </div>
+
+        <Card className="bg-white ring-brand-accent/60">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-2xl text-brand-dark">
+              Crear nuevo dia de pedido
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-dark/70">
+                  Fecha
+                </p>
+                <Input
+                  type="date"
+                  value={createDraft.date}
+                  disabled={createFeedback.isSubmitting}
+                  onChange={(event) =>
+                    setCreateDraft((current) => ({ ...current, date: event.target.value }))
+                  }
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-dark/70">
+                  Capacidad maxima
+                </p>
+                <Input
+                  type="number"
+                  min={0}
+                  value={createDraft.max_capacity}
+                  disabled={createFeedback.isSubmitting}
+                  onChange={(event) =>
+                    setCreateDraft((current) => ({
+                      ...current,
+                      max_capacity: event.target.value,
+                    }))
+                  }
+                  className="h-9"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-brand-dark sm:self-end">
+                <input
+                  type="checkbox"
+                  checked={createDraft.is_open}
+                  disabled={createFeedback.isSubmitting}
+                  onChange={(event) =>
+                    setCreateDraft((current) => ({
+                      ...current,
+                      is_open: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-brand-accent"
+                />
+                Abierto
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-brand-dark sm:self-end">
+                <input
+                  type="checkbox"
+                  checked={createDraft.is_special}
+                  disabled={createFeedback.isSubmitting}
+                  onChange={(event) =>
+                    setCreateDraft((current) => ({
+                      ...current,
+                      is_special: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-brand-accent"
+                />
+                Dia especial
+              </label>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-brand-dark/70">
+                Nota (opcional)
+              </p>
+              <Input
+                type="text"
+                value={createDraft.note}
+                disabled={createFeedback.isSubmitting}
+                onChange={(event) =>
+                  setCreateDraft((current) => ({ ...current, note: event.target.value }))
+                }
+                placeholder="Ejemplo: Produccion especial por feriado"
+                className="h-9"
+              />
+            </div>
+
+            {createFeedback.error && (
+              <p className="text-xs text-destructive">{createFeedback.error}</p>
+            )}
+            {createFeedback.success && (
+              <p className="text-xs text-emerald-700">{createFeedback.success}</p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                className="bg-brand-primary text-white hover:bg-brand-primary/90"
+                disabled={createFeedback.isSubmitting}
+                onClick={() => {
+                  void handleCreateDay();
+                }}
+              >
+                {createFeedback.isSubmitting ? "Creando..." : "Crear dia"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading && (
           <div className="space-y-3">

@@ -32,6 +32,7 @@ from app.schemas.admin import (
     AdminOrderDayManagementResponse,
     AdminOrderDetailResponse,
     AdminOrderDayResponse,
+    AdminOrderDayCreateRequest,
     AdminOrderDayUpdateRequest,
     AdminOrderGuestDataResponse,
     AdminOrderItemDetailResponse,

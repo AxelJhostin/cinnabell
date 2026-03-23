@@ -18,6 +18,7 @@ export function Navbar() {
   const isLoading = useAuthStore((state) => state.isLoading);
   const fetchMe = useAuthStore((state) => state.fetchMe);
   const logout = useAuthStore((state) => state.logout);
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (sessionCheckedRef.current) return;
@@ -68,6 +69,11 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           {isAuthenticated && user ? (
             <>
+              {isAdmin && (
+                <Button asChild variant="outline" className="bg-transparent">
+                  <Link href="/admin">Panel admin</Link>
+                </Button>
+              )}
               <Button asChild variant="outline" className="bg-transparent">
                 <Link href="/mi-cuenta">Mi cuenta</Link>
               </Button>

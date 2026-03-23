@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_admin
@@ -16,6 +17,7 @@ from app.schemas.admin import (
     AdminDashboardSummaryResponse,
     AdminOrderDayManagementResponse,
     AdminOrderDayResponse,
+    AdminOrderDayCreateRequest,
     AdminOrderDayUpdateRequest,
     AdminOrderDetailResponse,
     AdminOrderGuestDataResponse,
@@ -86,6 +88,13 @@ def build_selected_flavors(raw_flavors: object) -> list[AdminOrderItemSelectedFl
 
 def get_available_slots(order_day: OrderDay) -> int:
     return max(order_day.max_capacity - order_day.current_orders, 0)
+
+
+def normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
 
 
 def build_admin_order_day_response(order_day: OrderDay) -> AdminOrderDayManagementResponse:
@@ -211,6 +220,45 @@ def get_admin_order_days(
     return [build_admin_order_day_response(order_day) for order_day in order_days]
 
 
+@router.post("/order-days", response_model=AdminOrderDayManagementResponse, status_code=status.HTTP_201_CREATED)
+def create_admin_order_day(
+    payload: AdminOrderDayCreateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminOrderDayManagementResponse:
+    existing_order_day = db.query(OrderDay).filter(OrderDay.date == payload.date).first()
+    if existing_order_day is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un dia de pedido para esa fecha",
+        )
+
+    order_day = OrderDay(
+        date=payload.date,
+        is_open=payload.is_open,
+        max_capacity=int(payload.max_capacity),
+        current_orders=0,
+        is_special=payload.is_special,
+        note=normalize_optional_text(payload.note),
+    )
+
+    if get_available_slots(order_day) <= 0:
+        order_day.is_open = False
+
+    db.add(order_day)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un dia de pedido para esa fecha",
+        ) from None
+
+    db.refresh(order_day)
+    return build_admin_order_day_response(order_day)
+
+
 @router.patch("/order-days/{order_day_id}", response_model=AdminOrderDayManagementResponse)
 def update_admin_order_day(
     order_day_id: int,
@@ -238,11 +286,7 @@ def update_admin_order_day(
 
     if "note" in updates:
         raw_note = updates["note"]
-        if raw_note is None:
-            order_day.note = None
-        else:
-            normalized_note = str(raw_note).strip()
-            order_day.note = normalized_note or None
+        order_day.note = normalize_optional_text(str(raw_note) if raw_note is not None else None)
 
     if "is_open" in updates:
         requested_is_open = bool(updates["is_open"])

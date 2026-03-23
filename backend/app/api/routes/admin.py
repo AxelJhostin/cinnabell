@@ -15,8 +15,10 @@ from app.models.order_day import OrderDay
 from app.models.product import Product
 from app.models.user import User, UserRole
 from app.schemas.admin import (
+    AdminDashboardAttentionOrderResponse,
     AdminCustomerListItemResponse,
     AdminDashboardSummaryResponse,
+    AdminDashboardStatusCountsResponse,
     AdminOrderDayManagementResponse,
     AdminOrderDayResponse,
     AdminOrderDayCreateRequest,
@@ -160,11 +162,68 @@ def get_admin_dashboard_summary(
         for order_day in today_order_days
     )
 
+    status_rows = (
+        db.query(
+            Order.status,
+            func.count(Order.id),
+        )
+        .group_by(Order.status)
+        .all()
+    )
+    status_count_by_status = {
+        row[0]: int(row[1] or 0)
+        for row in status_rows
+        if isinstance(row[0], OrderStatus)
+    }
+    status_counts = AdminDashboardStatusCountsResponse(
+        pending=status_count_by_status.get(OrderStatus.pendiente, 0),
+        confirmed=status_count_by_status.get(OrderStatus.confirmado, 0),
+        in_preparation=status_count_by_status.get(OrderStatus.en_preparacion, 0),
+        ready=status_count_by_status.get(OrderStatus.listo, 0),
+        delivered=status_count_by_status.get(OrderStatus.entregado, 0),
+        cancelled=status_count_by_status.get(OrderStatus.cancelado, 0),
+    )
+
+    attention_statuses = [
+        OrderStatus.pendiente,
+        OrderStatus.confirmado,
+        OrderStatus.en_preparacion,
+        OrderStatus.listo,
+    ]
+    attention_orders = (
+        db.query(Order)
+        .options(selectinload(Order.order_day))
+        .filter(Order.status.in_(attention_statuses))
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(5)
+        .all()
+    )
+    attention_orders_payload = [
+        AdminDashboardAttentionOrderResponse(
+            id=order.id,
+            tracking_token=order.tracking_token,
+            status=order.status,
+            total=to_money_float(order.total),
+            created_at=order.created_at,
+            order_day=build_order_day_response(order.order_day),
+        )
+        for order in attention_orders
+    ]
+    attention_orders_count = (
+        status_counts.pending
+        + status_counts.confirmed
+        + status_counts.in_preparation
+        + status_counts.ready
+    )
+
     return AdminDashboardSummaryResponse(
         today_date=today,
         today_orders_count=int(today_orders_count),
         today_remaining_capacity=int(today_remaining_capacity),
         today_revenue=to_money_float(today_revenue),
+        status_counts=status_counts,
+        attention_orders_count=attention_orders_count,
+        attention_orders=attention_orders_payload,
     )
 
 

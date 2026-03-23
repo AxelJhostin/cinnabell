@@ -29,7 +29,9 @@ from app.schemas.order import (
 )
 from app.schemas.admin import (
     AdminCustomerListItemResponse,
+    AdminDashboardAttentionOrderResponse,
     AdminDashboardSummaryResponse,
+    AdminDashboardStatusCountsResponse,
     AdminOrderDayManagementResponse,
     AdminOrderDetailResponse,
     AdminOrderDayResponse,

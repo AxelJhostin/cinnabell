@@ -11,6 +11,27 @@ class AdminDashboardSummaryResponse(BaseModel):
     today_orders_count: int
     today_remaining_capacity: int
     today_revenue: float
+    status_counts: "AdminDashboardStatusCountsResponse"
+    attention_orders_count: int
+    attention_orders: list["AdminDashboardAttentionOrderResponse"]
+
+
+class AdminDashboardStatusCountsResponse(BaseModel):
+    pending: int
+    confirmed: int
+    in_preparation: int
+    ready: int
+    delivered: int
+    cancelled: int
+
+
+class AdminDashboardAttentionOrderResponse(BaseModel):
+    id: int
+    tracking_token: str
+    status: OrderStatus
+    total: float
+    created_at: datetime | None = None
+    order_day: "AdminOrderDayResponse"
 
 
 class AdminOrderGuestDataResponse(BaseModel):

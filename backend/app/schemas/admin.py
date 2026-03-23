@@ -67,6 +67,7 @@ class AdminOrderItemSelectedFlavorResponse(BaseModel):
 class AdminOrderItemDetailResponse(BaseModel):
     id: int
     product_id: int
+    product_name: str | None = None
     quantity: int
     unit_price: float
     subtotal: float

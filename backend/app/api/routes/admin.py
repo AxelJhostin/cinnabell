@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_current_admin
 from app.core.database import get_db
 from app.core.money import MONEY_ZERO, quantize_money, to_decimal, to_money_float
-from app.models.order import Order, OrderStatus, OrderStatusLog
+from app.models.order import Order, OrderItem, OrderStatus, OrderStatusLog
 from app.models.order_day import OrderDay
 from app.models.product import Product
 from app.models.user import User, UserRole
@@ -88,6 +88,16 @@ def build_selected_flavors(raw_flavors: object) -> list[AdminOrderItemSelectedFl
         )
 
     return normalized_flavors
+
+
+def resolve_item_name(order_item: OrderItem) -> str:
+    if order_item.product_name:
+        return order_item.product_name
+
+    if getattr(order_item, "product", None) is not None and getattr(order_item.product, "name", None):
+        return str(order_item.product.name)
+
+    return f"Producto #{order_item.product_id}"
 
 
 def get_available_slots(order_day: OrderDay) -> int:
@@ -544,6 +554,7 @@ def get_admin_order_detail(
         .options(
             selectinload(Order.order_day),
             selectinload(Order.items),
+            selectinload(Order.items).selectinload(OrderItem.product),
             selectinload(Order.status_log),
         )
         .filter(Order.id == order_id)
@@ -556,6 +567,7 @@ def get_admin_order_detail(
         AdminOrderItemDetailResponse(
             id=item.id,
             product_id=item.product_id,
+            product_name=resolve_item_name(item),
             quantity=item.quantity,
             unit_price=to_money_float(item.unit_price),
             subtotal=to_money_float(item.subtotal),

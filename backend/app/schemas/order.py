@@ -59,6 +59,7 @@ class OrderDayTrackingResponse(BaseModel):
 class OrderItemTrackingResponse(BaseModel):
     id: int
     product_id: int
+    product_name: str | None = None
     quantity: int
     selected_flavors: list[OrderItemSelectedFlavorInput] | None = None
     unit_price: float
@@ -99,3 +100,4 @@ class MyOrderListItemResponse(BaseModel):
     created_at: datetime | None = None
     order_day: OrderDayTrackingResponse
     items_count: int
+    item_names: list[str] = Field(default_factory=list)

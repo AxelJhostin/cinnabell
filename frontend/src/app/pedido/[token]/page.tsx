@@ -17,6 +17,7 @@ type TrackingFlavor = {
 type TrackingItem = {
   id: number;
   product_id: number;
+  product_name?: string | null;
   quantity: number;
   selected_flavors: TrackingFlavor[] | null;
   unit_price: number;
@@ -296,7 +297,9 @@ export default function PedidoTokenPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-medium text-brand-dark">Producto #{item.product_id}</p>
+                          <p className="font-medium text-brand-dark">
+                            {item.product_name?.trim() || `Producto #${item.product_id}`}
+                          </p>
                           <p className="text-xs text-brand-dark/70">
                             {item.quantity} x {currencyFormatter.format(item.unit_price)}
                           </p>

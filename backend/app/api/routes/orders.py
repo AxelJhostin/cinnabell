@@ -37,6 +37,16 @@ def generate_tracking_token(db: Session) -> str:
     )
 
 
+def resolve_item_name(order_item: OrderItem) -> str:
+    if order_item.product_name:
+        return order_item.product_name
+
+    if getattr(order_item, "product", None) is not None and getattr(order_item.product, "name", None):
+        return str(order_item.product.name)
+
+    return f"Producto #{order_item.product_id}"
+
+
 @router.post("", response_model=CreateOrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: CreateOrderRequest,
@@ -130,6 +140,7 @@ def create_order(
             order_item = OrderItem(
                 order_id=order.id,
                 product_id=product.id,
+                product_name=product.name,
                 quantity=item.quantity,
                 selected_flavors=flavors_payload or None,
                 unit_price=unit_price,
@@ -171,6 +182,7 @@ def track_order_by_token(token: str, db: Session = Depends(get_db)) -> TrackOrde
         .options(
             selectinload(Order.order_day),
             selectinload(Order.items),
+            selectinload(Order.items).selectinload(OrderItem.product),
             selectinload(Order.status_log),
         )
         .filter(Order.tracking_token == token)
@@ -191,6 +203,7 @@ def get_my_orders(
         .options(
             selectinload(Order.order_day),
             selectinload(Order.items),
+            selectinload(Order.items).selectinload(OrderItem.product),
         )
         .filter(Order.user_id == current_user.id)
         .order_by(Order.created_at.desc(), Order.id.desc())
@@ -206,6 +219,7 @@ def get_my_orders(
             created_at=order.created_at,
             order_day=order.order_day,
             items_count=len(order.items),
+            item_names=[resolve_item_name(item) for item in order.items],
         )
         for order in orders
     ]

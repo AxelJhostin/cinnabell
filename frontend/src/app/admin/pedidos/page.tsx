@@ -173,7 +173,7 @@ export default function AdminPedidosPage() {
                 }
                 onClick={() => setSelectedScope("recent")}
               >
-                Recientes (por creación)
+                Recientes (por creacion)
               </Button>
               <Button
                 type="button"
@@ -186,13 +186,13 @@ export default function AdminPedidosPage() {
                 }
                 onClick={() => setSelectedScope("today")}
               >
-                Día de pedido: hoy
+                Dia de pedido: hoy
               </Button>
             </div>
             <p className="mt-3 text-xs text-brand-dark/70">
               {selectedScope === "recent"
-                ? "Muestra pedidos recientes creados, incluso si su día de entrega es futuro."
-                : "Muestra solo pedidos cuyo día de pedido coincide con hoy."}
+                ? "Muestra pedidos recientes creados, incluso si su dia de entrega es futuro."
+                : "Muestra solo pedidos cuyo dia de pedido coincide con hoy."}
             </p>
           </CardContent>
         </Card>
@@ -257,7 +257,7 @@ export default function AdminPedidosPage() {
             <CardContent className="pt-5">
               <p className="text-sm text-brand-dark/80">
                 {selectedScope === "today"
-                  ? "No hay pedidos para este filtro con día de pedido hoy."
+                  ? "No hay pedidos para este filtro con dia de pedido hoy."
                   : "No hay pedidos para este filtro en los registros recientes."}
               </p>
             </CardContent>
@@ -266,10 +266,10 @@ export default function AdminPedidosPage() {
 
         {!isLoading && !error && hasOrders && (
           <div className="overflow-x-auto rounded-xl bg-white ring-1 ring-brand-accent/60">
-            <table className="min-w-[820px] w-full text-sm">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-brand-soft/70 text-left text-brand-dark">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Tracking</th>
+                  <th className="px-4 py-3 font-medium">Referencia</th>
                   <th className="px-4 py-3 font-medium">Cliente</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 font-medium">Total</th>
@@ -284,7 +284,12 @@ export default function AdminPedidosPage() {
                     key={order.id}
                     className="border-t border-brand-accent/50 text-brand-dark/90"
                   >
-                    <td className="px-4 py-3 font-mono text-xs">{order.tracking_token}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-xs font-medium text-brand-dark">Pedido #{order.id}</p>
+                      <p className="font-mono text-[11px] text-brand-dark/75">
+                        {order.tracking_token}
+                      </p>
+                    </td>
                     <td className="px-4 py-3">{order.guest_data?.name ?? "-"}</td>
                     <td className="px-4 py-3">
                       <Badge

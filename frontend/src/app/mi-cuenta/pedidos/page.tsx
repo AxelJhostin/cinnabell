@@ -30,6 +30,7 @@ type CustomerOrderListItem = {
     date: string;
   };
   items_count: number;
+  item_names: string[];
 };
 
 const statusClassMap: Record<CustomerOrderStatus, string> = {
@@ -44,7 +45,7 @@ const statusClassMap: Record<CustomerOrderStatus, string> = {
 const statusLabelMap: Record<CustomerOrderStatus, string> = {
   PENDIENTE: "Pendiente",
   CONFIRMADO: "Confirmado",
-  EN_PREPARACION: "En preparación",
+  EN_PREPARACION: "En preparacion",
   LISTO: "Listo",
   ENTREGADO: "Entregado",
   CANCELADO: "Cancelado",
@@ -174,12 +175,12 @@ export default function MiCuentaPedidosPage() {
           <Card className="bg-white ring-brand-accent/60">
             <CardHeader className="pb-3">
               <CardTitle className="font-display text-2xl text-brand-dark">
-                Último pedido
+                Ultimo pedido
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <div>
-                <p className="text-brand-dark/70">Tracking</p>
+                <p className="text-brand-dark/70">Pedido #{latestOrder.id}</p>
                 <p className="font-mono text-xs text-brand-dark">{latestOrder.tracking_token}</p>
               </div>
               <Badge className={cn("font-medium", statusClassMap[latestOrder.status])}>
@@ -216,9 +217,9 @@ export default function MiCuentaPedidosPage() {
         {!isLoading && !error && !hasOrders && (
           <Card className="bg-white ring-brand-accent/60">
             <CardContent className="pt-6">
-              <p className="text-sm text-brand-dark/80">Todavía no tienes pedidos registrados.</p>
+              <p className="text-sm text-brand-dark/80">Todavia no tienes pedidos registrados.</p>
               <Button asChild className="mt-3 bg-brand-primary text-white hover:bg-brand-primary/90">
-                <Link href="/menu">Ir al menú</Link>
+                <Link href="/menu">Ir al menu</Link>
               </Button>
             </CardContent>
           </Card>
@@ -231,14 +232,20 @@ export default function MiCuentaPedidosPage() {
                 <CardContent className="pt-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
+                      <p className="text-sm font-medium text-brand-dark">Pedido #{order.id}</p>
                       <p className="font-mono text-xs text-brand-dark/75">{order.tracking_token}</p>
                       <p className="text-sm text-brand-dark/80">
                         Creado: {formatDateTime(order.created_at)}
                       </p>
                       <p className="text-sm text-brand-dark/80">
-                        Día de pedido: {formatOrderDay(order.order_day.date)}
+                        Dia de pedido: {formatOrderDay(order.order_day.date)}
                       </p>
                       <p className="text-sm text-brand-dark/80">Items: {order.items_count}</p>
+                      {order.item_names.length > 0 && (
+                        <p className="text-sm text-brand-dark/80">
+                          Productos: {order.item_names.join(", ")}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <Badge className={cn("mb-2 font-medium", statusClassMap[order.status])}>

@@ -38,6 +38,7 @@ type AdminOrderItemFlavor = {
 type AdminOrderItem = {
   id: number;
   product_id: number;
+  product_name?: string | null;
   quantity: number;
   unit_price: number;
   subtotal: number;
@@ -398,7 +399,7 @@ export default function AdminPedidoDetailPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="font-medium text-brand-dark">
-                                Producto #{item.product_id}
+                                {item.product_name?.trim() || `Producto #${item.product_id}`}
                               </p>
                               <p className="text-xs text-brand-dark/70">
                                 Cantidad: {item.quantity}

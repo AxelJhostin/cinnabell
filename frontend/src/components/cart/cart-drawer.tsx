@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
+  SheetClose,
   SheetDescription,
   SheetFooter,
   SheetHeader,
@@ -185,13 +187,21 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
               >
                 Vaciar carrito
               </Button>
-              <Button
-                type="button"
-                className="bg-brand-primary text-white hover:bg-brand-primary/90"
-                disabled={!hasHydrated || !hasItems}
-              >
-                Continuar pronto
-              </Button>
+              {hasHydrated && hasItems ? (
+                <SheetClose asChild>
+                  <Button asChild type="button" className="bg-brand-primary text-white hover:bg-brand-primary/90">
+                    <Link href="/pedir">Continuar</Link>
+                  </Button>
+                </SheetClose>
+              ) : (
+                <Button
+                  type="button"
+                  className="bg-brand-primary text-white hover:bg-brand-primary/90"
+                  disabled
+                >
+                  Continuar
+                </Button>
+              )}
             </div>
           </div>
         </SheetFooter>

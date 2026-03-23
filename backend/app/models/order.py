@@ -35,6 +35,7 @@ class OrderItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_name = Column(String, nullable=True)
     quantity = Column(Integer, nullable=False)
     selected_flavors = Column(JSON, nullable=True)
     unit_price = Column(Numeric(10, 2), nullable=False)

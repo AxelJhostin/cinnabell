@@ -35,11 +35,12 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
   const items = useCartStore((state) => state.items);
   const totalItems = useCartStore((state) => state.totalItems);
   const totalPrice = useCartStore((state) => state.totalPrice);
+  const hasHydrated = useCartStore((state) => state.hasHydrated);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const clearCart = useCartStore((state) => state.clearCart);
 
-  const hasItems = items.length > 0;
+  const hasItems = hasHydrated && items.length > 0;
 
   return (
     <Sheet>
@@ -52,7 +53,7 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
         >
           <span className="relative inline-flex">
             <ShoppingBag />
-            {totalItems > 0 && (
+            {hasHydrated && totalItems > 0 && (
               <Badge className="absolute -top-2 -right-2 h-4 min-w-4 rounded-full px-1 text-[10px] leading-none">
                 {totalItems > 99 ? "99+" : totalItems}
               </Badge>
@@ -75,13 +76,22 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {!hasItems ? (
+          {!hasHydrated ? (
             <div className="mt-8 rounded-2xl bg-white p-6 text-center ring-1 ring-brand-accent/60">
               <p className="font-display text-xl font-semibold text-brand-dark">
-                Tu carrito estÃ¡ vacÃ­o
+                Cargando carrito
               </p>
               <p className="mt-2 text-sm text-brand-dark/75">
-                Agrega tus roles favoritos y aquÃ­ verÃ¡s el resumen.
+                Recuperando tus productos guardados...
+              </p>
+            </div>
+          ) : !hasItems ? (
+            <div className="mt-8 rounded-2xl bg-white p-6 text-center ring-1 ring-brand-accent/60">
+              <p className="font-display text-xl font-semibold text-brand-dark">
+                Tu carrito esta vacio
+              </p>
+              <p className="mt-2 text-sm text-brand-dark/75">
+                Agrega tus roles favoritos y aqui veras el resumen.
               </p>
             </div>
           ) : (
@@ -97,9 +107,7 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
                       <p className="text-xs text-brand-dark/70">
                         {categoryLabel[item.category]}
                         {item.selectedFlavors && item.selectedFlavors.length > 0
-                          ? ` • ${item.selectedFlavors
-                              .map((flavor) => flavor.name)
-                              .join(", ")}`
+                          ? ` - ${item.selectedFlavors.map((flavor) => flavor.name).join(", ")}`
                           : ""}
                       </p>
                     </div>
@@ -116,9 +124,7 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
                         variant="ghost"
                         className="text-brand-dark"
                         aria-label={`Disminuir cantidad de ${item.name}`}
-                        onClick={() =>
-                          updateQuantity(item.lineId, item.quantity - 1)
-                        }
+                        onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
                       >
                         <Minus />
                       </Button>
@@ -131,9 +137,7 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
                         variant="ghost"
                         className="text-brand-dark"
                         aria-label={`Aumentar cantidad de ${item.name}`}
-                        onClick={() =>
-                          updateQuantity(item.lineId, item.quantity + 1)
-                        }
+                        onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
                       >
                         <Plus />
                       </Button>
@@ -160,12 +164,14 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-brand-dark/80">Total de items</span>
-              <span className="font-semibold text-brand-dark">{totalItems}</span>
+              <span className="font-semibold text-brand-dark">
+                {hasHydrated ? totalItems : "-"}
+              </span>
             </div>
             <div className="flex items-center justify-between text-base">
               <span className="font-medium text-brand-dark">Total</span>
               <span className="font-semibold text-brand-primary">
-                {currencyFormatter.format(totalPrice)}
+                {hasHydrated ? currencyFormatter.format(totalPrice) : "-"}
               </span>
             </div>
 
@@ -175,14 +181,14 @@ export function CartDrawer({ triggerClassName }: CartDrawerProps) {
                 variant="outline"
                 className="border-brand-accent text-brand-dark"
                 onClick={clearCart}
-                disabled={!hasItems}
+                disabled={!hasHydrated || !hasItems}
               >
                 Vaciar carrito
               </Button>
               <Button
                 type="button"
                 className="bg-brand-primary text-white hover:bg-brand-primary/90"
-                disabled={!hasItems}
+                disabled={!hasHydrated || !hasItems}
               >
                 Continuar pronto
               </Button>

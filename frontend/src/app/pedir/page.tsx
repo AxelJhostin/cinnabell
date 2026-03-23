@@ -107,22 +107,27 @@ export default function PedirPage() {
   const totalItems = useCartStore((state) => state.totalItems);
   const totalPrice = useCartStore((state) => state.totalPrice);
   const clearCart = useCartStore((state) => state.clearCart);
+  const hasHydratedCart = useCartStore((state) => state.hasHydrated);
   const authUser = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const fetchMe = useAuthStore((state) => state.fetchMe);
 
-  const cartIsEmpty = useMemo(() => totalItems === 0, [totalItems]);
+  const cartIsEmpty = useMemo(
+    () => (hasHydratedCart ? totalItems === 0 : true),
+    [hasHydratedCart, totalItems]
+  );
   const authenticatedUser = useMemo(
     () => (isAuthenticated && authUser ? authUser : null),
     [isAuthenticated, authUser]
   );
   const canContinueFromStepOne =
+    hasHydratedCart &&
     Boolean(selectedDate) &&
     selectedOrderDayId !== null &&
     !isResolvingOrderDay &&
     !orderDayResolveError &&
     !cartIsEmpty;
-  const canContinueFromStepTwo = !cartIsEmpty;
+  const canContinueFromStepTwo = hasHydratedCart && !cartIsEmpty;
 
   const selectedDateText = useMemo(
     () => (selectedDate ? formatSelectedDate(selectedDate) : "Sin fecha seleccionada"),
@@ -240,9 +245,15 @@ export default function PedirPage() {
 
   const helperText = useMemo(() => {
     if (currentStep === 1) {
+      if (!hasHydratedCart) {
+        return "Estamos cargando tu carrito guardado...";
+      }
       return "Para continuar debes elegir un dia valido y tener productos en el carrito.";
     }
     if (currentStep === 2) {
+      if (!hasHydratedCart) {
+        return "Estamos cargando tu carrito guardado...";
+      }
       return "Revisa tu carrito antes de pasar al formulario de contacto.";
     }
     if (currentStep === 3) {
@@ -251,7 +262,7 @@ export default function PedirPage() {
         : "Completa tus datos para ir a la confirmacion final.";
     }
     return "Confirma para crear tu pedido real y obtener tu token de seguimiento.";
-  }, [currentStep, authenticatedUser]);
+  }, [currentStep, authenticatedUser, hasHydratedCart]);
 
   const handleStepThreeSubmit = handleSubmit((values) => {
     const normalizedPhone = values.phone.trim();
@@ -297,6 +308,10 @@ export default function PedirPage() {
 
   const handleConfirmOrder = async () => {
     if (isSubmittingOrder) return;
+    if (!hasHydratedCart) {
+      setSubmitOrderError("Estamos cargando tu carrito. Intenta nuevamente en un momento.");
+      return;
+    }
 
     if (!selectedOrderDayId) {
       setSubmitOrderError("No se pudo resolver el dia de pedido seleccionado.");
@@ -435,6 +450,12 @@ export default function PedirPage() {
                   {selectedDateText}
                 </div>
 
+                {!hasHydratedCart && (
+                  <p className="mt-2 text-xs text-brand-dark/70">
+                    Cargando carrito guardado...
+                  </p>
+                )}
+
                 {isResolvingOrderDay && (
                   <p className="mt-2 text-xs text-brand-dark/70">Validando disponibilidad del dia...</p>
                 )}
@@ -454,7 +475,11 @@ export default function PedirPage() {
                   Revisa lo que estas por pedir antes de pasar a tus datos de contacto.
                 </p>
 
-                {cartIsEmpty ? (
+                {!hasHydratedCart ? (
+                  <div className="mt-4 rounded-xl bg-brand-soft/70 p-4 text-sm text-brand-dark/80">
+                    Cargando carrito guardado...
+                  </div>
+                ) : cartIsEmpty ? (
                   <div className="mt-4 rounded-xl bg-brand-soft/70 p-4 text-sm text-brand-dark/80">
                     <p>Tu carrito esta vacio.</p>
                     <Button
@@ -603,7 +628,12 @@ export default function PedirPage() {
                 <Button
                   type="button"
                   className="mt-4 w-full bg-brand-primary text-white hover:bg-brand-primary/90"
-                  disabled={isSubmittingOrder || cartIsEmpty || selectedOrderDayId === null}
+                  disabled={
+                    isSubmittingOrder ||
+                    !hasHydratedCart ||
+                    cartIsEmpty ||
+                    selectedOrderDayId === null
+                  }
                   onClick={() => {
                     void handleConfirmOrder();
                   }}
@@ -620,7 +650,11 @@ export default function PedirPage() {
                 Resumen del carrito
               </h3>
 
-              {cartIsEmpty ? (
+              {!hasHydratedCart ? (
+                <div className="mt-3 space-y-2 text-sm text-brand-dark/80">
+                  <p>Cargando carrito guardado...</p>
+                </div>
+              ) : cartIsEmpty ? (
                 <div className="mt-3 space-y-2 text-sm text-brand-dark/80">
                   <p>Tu carrito esta vacio.</p>
                   <Button asChild className="bg-brand-primary text-white hover:bg-brand-primary/90">

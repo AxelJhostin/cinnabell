@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
-import { Inter } from "next/font/google";
-import { cn } from "@/lib/utils";
+import { Inter, Poppins } from "next/font/google";
+
 import { Navbar } from "@/components/layout/navbar";
+import { cn } from "@/lib/utils";
+
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const poppins = Poppins({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,10 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={cn("font-sans", inter.variable)}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="es" className={cn("font-sans", inter.variable, poppins.variable)}>
+      <body className="min-h-screen bg-background text-foreground antialiased">
         <div className="min-h-screen">
           <Navbar />
           <main>{children}</main>

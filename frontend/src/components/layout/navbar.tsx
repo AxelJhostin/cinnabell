@@ -38,12 +38,12 @@ export function Navbar() {
   };
 
   return (
-    <header className="border-b bg-brand-soft text-brand-dark">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center justify-between sm:justify-start">
+    <header className="sticky top-0 z-40 border-b border-brand-secondary/55 bg-brand-soft/95 text-brand-dark backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+        <div className="flex items-center justify-between gap-3 sm:justify-start">
           <Link
             href="/"
-            className="font-display text-2xl font-semibold tracking-tight text-brand-primary"
+            className="font-display text-2xl font-semibold tracking-tight text-brand-primary sm:text-3xl"
           >
             Cinnabell
           </Link>
@@ -51,30 +51,30 @@ export function Navbar() {
           <CartDrawer triggerClassName="text-brand-dark sm:hidden" />
         </div>
 
-        <nav className="flex items-center gap-2 sm:gap-4">
+        <nav className="flex items-center gap-1.5 sm:gap-2">
           <Link
             href="/"
-            className="rounded-md px-2 py-1 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-accent/50"
+            className="rounded-xl px-3 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-secondary/45"
           >
             Inicio
           </Link>
           <Link
             href="/menu"
-            className="rounded-md px-2 py-1 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-accent/50"
+            className="rounded-xl px-3 py-2 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-secondary/45"
           >
             Menu
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isAuthenticated && user ? (
             <>
               {isAdmin && (
-                <Button asChild variant="outline" className="bg-transparent">
+                <Button asChild variant="outline" className="bg-white/75">
                   <Link href="/admin">Panel admin</Link>
                 </Button>
               )}
-              <Button asChild variant="outline" className="bg-transparent">
+              <Button asChild variant="outline" className="bg-white/75">
                 <Link href="/mi-cuenta">Mi cuenta</Link>
               </Button>
               <Button
@@ -89,10 +89,10 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Button asChild variant="outline" className="bg-transparent">
+              <Button asChild variant="outline" className="bg-white/75">
                 <Link href="/login">Login</Link>
               </Button>
-              <Button asChild className="bg-brand-primary text-white hover:bg-brand-primary/90">
+              <Button asChild className="bg-brand-primary text-white hover:bg-brand-primaryHover">
                 <Link href="/registro">Registro</Link>
               </Button>
             </>

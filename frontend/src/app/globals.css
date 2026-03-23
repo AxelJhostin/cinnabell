@@ -2,31 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-@import "@fontsource/inter";
-@import "@fontsource/playfair-display";
 @import "tw-animate-css";
 
 :root {
-  --background: 24 100% 96%;
-  --foreground: 240 28% 14%;
+  --background: 22 100% 97%;
+  --foreground: 16 23% 19%;
   --card: 0 0% 100%;
-  --card-foreground: 240 28% 14%;
+  --card-foreground: 16 23% 19%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 28% 14%;
-  --primary: 10 56% 51%;
+  --popover-foreground: 16 23% 19%;
+  --primary: 24 54% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 28 87% 67%;
-  --secondary-foreground: 240 28% 14%;
-  --muted: 30 33% 94%;
-  --muted-foreground: 0 0% 33%;
-  --accent: 0 77% 88%;
-  --accent-foreground: 240 28% 14%;
+  --secondary: 14 73% 80%;
+  --secondary-foreground: 16 23% 19%;
+  --muted: 20 100% 95%;
+  --muted-foreground: 16 14% 35%;
+  --accent: 14 73% 80%;
+  --accent-foreground: 16 23% 19%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border: 30 43% 84%;
-  --input: 30 43% 84%;
-  --ring: 10 56% 51%;
-  --radius: 0.75rem;
+  --border: 20 55% 86%;
+  --input: 20 55% 86%;
+  --ring: 24 54% 50%;
+  --radius: 1rem;
 }
 
 @layer base {
@@ -35,6 +33,19 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display text-brand-dark;
+  }
+
+  p {
+    @apply leading-relaxed;
   }
 }

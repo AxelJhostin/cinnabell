@@ -103,7 +103,7 @@ export default function MiCuentaPedidosPage() {
       setIsLoading(true);
       setError(null);
 
-      const currentUser = await fetchMe();
+      const currentUser = await fetchMe({ force: true });
       if (!currentUser) {
         if (isMounted) {
           router.replace("/login?next=/mi-cuenta/pedidos");

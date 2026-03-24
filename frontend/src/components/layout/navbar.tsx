@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { CartDrawer } from "@/components/cart/cart-drawer";
@@ -9,27 +9,70 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/authStore";
 
 export function Navbar() {
+  const pathname = usePathname();
   const router = useRouter();
-  const sessionCheckedRef = useRef(false);
+  const mobileAccountMenuRef = useRef<HTMLDivElement | null>(null);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isMobileAccountMenuOpen, setIsMobileAccountMenuOpen] = useState(false);
 
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const hasCheckedSession = useAuthStore((state) => state.hasCheckedSession);
   const fetchMe = useAuthStore((state) => state.fetchMe);
   const logout = useAuthStore((state) => state.logout);
   const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    if (sessionCheckedRef.current) return;
-    sessionCheckedRef.current = true;
+    const isProtectedPath =
+      pathname.startsWith("/mi-cuenta") || pathname.startsWith("/admin");
+    if (!isProtectedPath || isAuthenticated || isLoading) return;
     void fetchMe();
-  }, [fetchMe]);
+  }, [fetchMe, isAuthenticated, isLoading, pathname]);
+
+  useEffect(() => {
+    setIsMobileAccountMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileAccountMenuOpen) return;
+
+    const handlePointerDown = (event: Event) => {
+      if (
+        mobileAccountMenuRef.current &&
+        !mobileAccountMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsMobileAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isMobileAccountMenuOpen]);
+
+  const toggleMobileAccountMenu = () => {
+    setIsMobileAccountMenuOpen((current) => {
+      const next = !current;
+      if (next && !isAuthenticated && !hasCheckedSession) {
+        void fetchMe();
+      }
+      return next;
+    });
+  };
+
+  const closeMobileAccountMenu = () => {
+    setIsMobileAccountMenuOpen(false);
+  };
 
   const handleLogout = async () => {
     setLogoutError(null);
     try {
       await logout();
+      closeMobileAccountMenu();
       router.push("/");
       router.refresh();
     } catch (error) {
@@ -51,55 +94,70 @@ export function Navbar() {
 
             <div className="flex items-center gap-1.5">
               <CartDrawer triggerClassName="text-brand-dark" />
-              <details className="relative">
-                <summary className="flex h-11 list-none items-center rounded-2xl border border-brand-primary/35 bg-white/80 px-4 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-soft [&::-webkit-details-marker]:hidden">
+              <div className="relative" ref={mobileAccountMenuRef}>
+                <button
+                  type="button"
+                  onClick={toggleMobileAccountMenu}
+                  className="flex h-11 items-center rounded-2xl border border-brand-primary/35 bg-white/80 px-4 text-sm font-medium text-brand-dark transition-colors hover:bg-brand-soft"
+                  aria-expanded={isMobileAccountMenuOpen}
+                  aria-haspopup="menu"
+                >
                   {isAuthenticated && user ? "Cuenta" : "Acceder"}
-                </summary>
-                <div className="absolute right-0 top-12 z-50 w-52 space-y-1 rounded-2xl border border-brand-secondary/60 bg-white p-2 shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-                  {isAuthenticated && user ? (
-                    <>
-                      {isAdmin && (
+                </button>
+                {isMobileAccountMenuOpen && (
+                  <div
+                    className="absolute right-0 top-12 z-50 w-52 space-y-1 rounded-2xl border border-brand-secondary/60 bg-white p-2 shadow-[0_8px_20px_rgba(0,0,0,0.08)]"
+                    role="menu"
+                  >
+                    {isAuthenticated && user ? (
+                      <>
+                        {isAdmin && (
+                          <Link
+                            href="/admin"
+                            className="block rounded-xl px-3 py-2 text-sm text-brand-dark transition-colors hover:bg-brand-soft"
+                            onClick={closeMobileAccountMenu}
+                          >
+                            Panel admin
+                          </Link>
+                        )}
                         <Link
-                          href="/admin"
+                          href="/mi-cuenta"
                           className="block rounded-xl px-3 py-2 text-sm text-brand-dark transition-colors hover:bg-brand-soft"
+                          onClick={closeMobileAccountMenu}
                         >
-                          Panel admin
+                          Mi cuenta
                         </Link>
-                      )}
-                      <Link
-                        href="/mi-cuenta"
-                        className="block rounded-xl px-3 py-2 text-sm text-brand-dark transition-colors hover:bg-brand-soft"
-                      >
-                        Mi cuenta
-                      </Link>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full justify-start px-3"
-                        onClick={() => void handleLogout()}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? "Saliendo..." : "Salir"}
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/login"
-                        className="block rounded-xl px-3 py-2 text-sm text-brand-dark transition-colors hover:bg-brand-soft"
-                      >
-                        Login
-                      </Link>
-                      <Link
-                        href="/registro"
-                        className="block rounded-xl bg-brand-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-primaryHover"
-                      >
-                        Registro
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </details>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-start px-3"
+                          onClick={() => void handleLogout()}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? "Saliendo..." : "Salir"}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          href="/login"
+                          className="block rounded-xl px-3 py-2 text-sm text-brand-dark transition-colors hover:bg-brand-soft"
+                          onClick={closeMobileAccountMenu}
+                        >
+                          Login
+                        </Link>
+                        <Link
+                          href="/registro"
+                          className="block rounded-xl bg-brand-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-primaryHover"
+                          onClick={closeMobileAccountMenu}
+                        >
+                          Registro
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

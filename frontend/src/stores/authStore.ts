@@ -37,6 +37,52 @@ type AuthStore = {
   logoutLocal: () => void;
 };
 
+const GUEST_CACHE_KEY = "cinnabell-auth-guest";
+const AUTH_USER_CACHE_KEY = "cinnabell-auth-user";
+
+function isBrowserEnvironment(): boolean {
+  return typeof window !== "undefined";
+}
+
+function hasGuestCache(): boolean {
+  if (!isBrowserEnvironment()) return false;
+  return window.sessionStorage.getItem(GUEST_CACHE_KEY) === "1";
+}
+
+function getCachedUser(): AuthUser | null {
+  if (!isBrowserEnvironment()) return null;
+
+  const rawUser = window.localStorage.getItem(AUTH_USER_CACHE_KEY);
+  if (!rawUser) return null;
+
+  try {
+    return JSON.parse(rawUser) as AuthUser;
+  } catch {
+    window.localStorage.removeItem(AUTH_USER_CACHE_KEY);
+    return null;
+  }
+}
+
+function setGuestCache(value: boolean): void {
+  if (!isBrowserEnvironment()) return;
+  if (value) {
+    window.sessionStorage.setItem(GUEST_CACHE_KEY, "1");
+    return;
+  }
+  window.sessionStorage.removeItem(GUEST_CACHE_KEY);
+}
+
+function setCachedUser(user: AuthUser | null): void {
+  if (!isBrowserEnvironment()) return;
+
+  if (!user) {
+    window.localStorage.removeItem(AUTH_USER_CACHE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(AUTH_USER_CACHE_KEY, JSON.stringify(user));
+}
+
 function toStoreError(error: unknown, fallbackMessage: string): Error {
   if (error instanceof Error && error.message) {
     return error;
@@ -45,6 +91,9 @@ function toStoreError(error: unknown, fallbackMessage: string): Error {
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => {
+  const initialUser = getCachedUser();
+  const initialIsAuthenticated = Boolean(initialUser);
+  const initialHasCheckedSession = initialIsAuthenticated || hasGuestCache();
   let pendingActions = 0;
 
   const startLoading = () => {
@@ -58,14 +107,15 @@ export const useAuthStore = create<AuthStore>((set, get) => {
   };
 
   return {
-    user: null,
-    isAuthenticated: false,
+    user: initialUser,
+    isAuthenticated: initialIsAuthenticated,
     isLoading: false,
-    hasCheckedSession: false,
+    hasCheckedSession: initialHasCheckedSession,
 
     fetchMe: async (options) => {
       const shouldSkipRequest =
-        !options?.force && get().hasCheckedSession && !get().isAuthenticated;
+        !options?.force &&
+        ((get().hasCheckedSession && !get().isAuthenticated) || hasGuestCache());
       if (shouldSkipRequest) {
         return null;
       }
@@ -73,6 +123,8 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       startLoading();
       try {
         const user = await api.get<AuthUser>("/auth/me");
+        setCachedUser(user);
+        setGuestCache(false);
         set({ user, isAuthenticated: true, hasCheckedSession: true });
         return user;
       } catch (error) {
@@ -85,8 +137,11 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           if (shouldLog) {
             console.error("Error real al reconstruir sesion en /auth/me", error);
           }
+        } else {
+          setGuestCache(true);
         }
 
+        setCachedUser(null);
         set({ user: null, isAuthenticated: false, hasCheckedSession: true });
         return null;
       } finally {
@@ -104,6 +159,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           throw new Error("No se pudo recuperar la sesión del usuario.");
         }
 
+        setGuestCache(false);
         return user;
       } catch (error) {
         set({ user: null, isAuthenticated: false });
@@ -132,6 +188,8 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       } catch (error) {
         throw toStoreError(error, "No se pudo cerrar sesion.");
       } finally {
+        setCachedUser(null);
+        setGuestCache(true);
         set({
           user: null,
           isAuthenticated: false,
@@ -142,6 +200,8 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     },
 
     logoutLocal: () => {
+      setCachedUser(null);
+      setGuestCache(true);
       set({
         user: null,
         isAuthenticated: false,

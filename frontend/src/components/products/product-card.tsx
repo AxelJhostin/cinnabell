@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { resolveCatalogImageUrl } from "@/lib/product-images";
 import { useCartStore } from "@/stores/cartStore";
 
 export type ProductCategory = "individual" | "especial" | "box";
@@ -44,6 +45,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const resolvedImageUrl = resolveCatalogImageUrl(slug, image_url);
 
   useEffect(() => {
     if (!addedFeedback) return;
@@ -59,7 +61,7 @@ export function ProductCard({
       price,
       quantity: 1,
       category,
-      imageUrl: image_url,
+      imageUrl: resolvedImageUrl,
       selectedFlavors: undefined,
     });
     setAddedFeedback(true);
@@ -67,9 +69,9 @@ export function ProductCard({
 
   return (
     <article className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] ring-1 ring-brand-accent/60 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
-      {image_url ? (
+      {resolvedImageUrl ? (
         <Image
-          src={image_url}
+          src={resolvedImageUrl}
           alt={name}
           width={640}
           height={400}

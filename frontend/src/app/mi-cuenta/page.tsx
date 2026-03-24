@@ -22,7 +22,7 @@ export default function MiCuentaPage() {
     if (sessionCheckedRef.current) return;
     sessionCheckedRef.current = true;
     void (async () => {
-      const currentUser = await fetchMe();
+      const currentUser = await fetchMe({ force: true });
       if (!currentUser) {
         router.replace("/login?next=/mi-cuenta");
       }

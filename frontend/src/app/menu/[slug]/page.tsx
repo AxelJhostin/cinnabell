@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct } from "@/components/products/product-card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { resolveCatalogImageUrl } from "@/lib/product-images";
 import { useCartStore } from "@/stores/cartStore";
 
 type ProductFlavor = {
@@ -116,6 +117,11 @@ export default function ProductDetailPage() {
       }));
   }, [product, selectedFlavorIds]);
 
+  const resolvedImageUrl = useMemo(() => {
+    if (!product) return null;
+    return resolveCatalogImageUrl(product.slug, product.image_url);
+  }, [product]);
+
   const unitPrice = useMemo(() => {
     if (!product) {
       return 0;
@@ -146,7 +152,7 @@ export default function ProductDetailPage() {
       price: unitPrice,
       quantity: 1,
       category: product.category,
-      imageUrl: product.image_url,
+      imageUrl: resolvedImageUrl,
       selectedFlavors: selectedFlavors.length > 0 ? selectedFlavors : undefined,
     });
 
@@ -207,9 +213,9 @@ export default function ProductDetailPage() {
         {!isLoading && !isNotFound && !error && product && (
           <article className="mt-6 grid gap-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-brand-accent/60 sm:p-7 lg:grid-cols-2">
             <div className="overflow-hidden rounded-2xl bg-brand-accent/20">
-              {product.image_url ? (
+              {resolvedImageUrl ? (
                 <Image
-                  src={product.image_url}
+                  src={resolvedImageUrl}
                   alt={product.name}
                   width={900}
                   height={700}

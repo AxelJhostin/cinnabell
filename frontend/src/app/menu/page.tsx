@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { BoxCard } from "@/components/products/box-card";
@@ -9,6 +10,13 @@ import {
 } from "@/components/products/product-card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useCartStore } from "@/stores/cartStore";
+
+const currencyFormatter = new Intl.NumberFormat("es-EC", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+});
 
 export default function MenuPage() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
@@ -16,7 +24,13 @@ export default function MenuPage() {
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
+  const cartItemsLength = useCartStore((state) => state.items.length);
+  const totalItems = useCartStore((state) => state.totalItems);
+  const totalPrice = useCartStore((state) => state.totalPrice);
+  const hasHydratedCart = useCartStore((state) => state.hasHydrated);
+
   const hasProducts = useMemo(() => products.length > 0, [products]);
+  const showStickyCartBar = hasHydratedCart && cartItemsLength > 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -52,7 +66,11 @@ export default function MenuPage() {
 
   return (
     <div className="bg-brand-soft">
-      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+      <section
+        className={`mx-auto max-w-6xl px-4 pt-12 pb-12 sm:px-6 sm:py-16 ${
+          showStickyCartBar ? "pb-32" : ""
+        }`}
+      >
         <div className="max-w-3xl">
           <p className="inline-flex rounded-full bg-brand-accent/60 px-3 py-1 text-xs font-medium text-brand-dark">
             Catálogo Cinnabell
@@ -115,6 +133,29 @@ export default function MenuPage() {
           </div>
         )}
       </section>
+
+      {showStickyCartBar && (
+        <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:hidden">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-t-2xl bg-brand-primary px-4 py-3 text-white shadow-[0_-4px_12px_rgba(0,0,0,0.15)]">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-white/90">
+                {totalItems} item{totalItems === 1 ? "" : "s"}
+              </p>
+              <p className="truncate text-sm font-semibold">
+                {currencyFormatter.format(totalPrice)}
+              </p>
+            </div>
+
+            <Button
+              asChild
+              variant="secondary"
+              className="shrink-0 bg-white text-brand-primary hover:bg-white/90"
+            >
+              <Link href="/pedir">Ver carrito</Link>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

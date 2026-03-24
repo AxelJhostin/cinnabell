@@ -49,7 +49,7 @@ export function BoxCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl bg-white shadow-sm ring-2 ring-brand-primary/30">
+    <article className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] ring-2 ring-brand-primary/30 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
       {image_url ? (
         <Image
           src={image_url}
@@ -57,37 +57,36 @@ export function BoxCard({
           width={640}
           height={400}
           unoptimized
-          className="h-44 w-full object-cover"
+          className="h-48 w-full object-cover"
         />
       ) : (
-        <div className="flex h-44 w-full items-center justify-center bg-brand-primary/15 text-sm font-medium text-brand-dark/70">
-          Imagen proximamente
+        <div className="flex h-48 w-full items-center justify-center bg-gradient-to-br from-brand-primary/12 to-brand-secondary/35 px-4 text-center text-sm font-medium text-brand-dark/75">
+          Imagen del box próximamente
         </div>
       )}
 
-      <div className="space-y-3 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="inline-flex rounded-full bg-brand-primary/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand-primary">
-              Box Cinnabell
-            </p>
-            <h3 className="mt-2 font-display text-2xl font-semibold text-brand-dark">
-              {name}
-            </h3>
-          </div>
-          <p className="text-sm font-semibold text-brand-primary">
-            {currencyFormatter.format(price)}
+      <div className="space-y-4 p-5 sm:p-6">
+        <div className="space-y-2">
+          <p className="inline-flex w-fit rounded-full bg-brand-primary/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary">
+            Box Cinnabell
           </p>
+          <h3 className="font-display text-2xl font-semibold leading-tight text-brand-dark">
+            {name}
+          </h3>
         </div>
 
         <p className="line-clamp-3 text-sm text-brand-dark/80">
           {description ?? "Descripcion disponible pronto."}
         </p>
 
-        <div className="grid grid-cols-2 gap-2">
+        <p className="text-2xl font-bold tracking-tight text-brand-primary">
+          {currencyFormatter.format(price)}
+        </p>
+
+        <div className="grid grid-cols-[2fr_1fr] gap-2">
           <Button
             type="button"
-            className="bg-brand-primary text-white hover:bg-brand-primary/90"
+            className="w-full bg-brand-primary text-white hover:bg-brand-primaryHover"
             onClick={handleAddToCart}
           >
             {addedFeedback ? "Agregado" : "Agregar"}
@@ -95,7 +94,7 @@ export function BoxCard({
           <Button
             asChild
             variant="outline"
-            className="border-brand-primary text-brand-primary hover:bg-brand-primary/10"
+            className="w-full border-brand-primary/45 text-brand-primary hover:bg-brand-primary/10"
           >
             <Link href={`/menu/${encodeURIComponent(slug)}`}>Ver detalle</Link>
           </Button>

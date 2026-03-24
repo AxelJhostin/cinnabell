@@ -17,10 +17,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 
 const steps = [
-  { id: 1, label: "Dia" },
+  { id: 1, label: "Día" },
   { id: 2, label: "Productos" },
   { id: 3, label: "Contacto" },
-  { id: 4, label: "Confirmacion" },
+  { id: 4, label: "Confirmación" },
 ] as const;
 
 const currencyFormatter = new Intl.NumberFormat("es-EC", {
@@ -227,7 +227,7 @@ export default function PedirPage() {
   const continueButtonLabel = useMemo(() => {
     if (currentStep === 1) return "Continuar a productos";
     if (currentStep === 2) return "Continuar a contacto";
-    if (currentStep === 3) return "Continuar a confirmacion";
+    if (currentStep === 3) return "Continuar a confirmación";
     return "Paso final";
   }, [currentStep]);
 
@@ -389,21 +389,28 @@ export default function PedirPage() {
   };
 
   return (
-    <div className="bg-brand-soft px-4 py-10 sm:px-6 sm:py-14">
-      <section className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="max-w-3xl">
-          <p className="text-xs font-medium uppercase tracking-wide text-brand-primary">
-            Flujo de pedido
-          </p>
-          <h1 className="mt-2 font-display text-4xl font-semibold text-brand-dark sm:text-5xl">
-            Realiza tu pedido
-          </h1>
-          <p className="mt-3 text-sm text-brand-dark/80 sm:text-base">
-            Selecciona tu dia de entrega y avanza paso a paso para completar tu pedido.
-          </p>
-        </div>
+    <div className="bg-brand-soft px-3 pb-8 pt-4 sm:px-6 sm:pb-10 sm:pt-8">
+      <section className="mx-auto w-full max-w-6xl space-y-3 sm:space-y-4">
+        <header className="rounded-2xl border border-brand-accent/60 bg-white/85 p-4 shadow-[0_6px_20px_rgba(0,0,0,0.04)] backdrop-blur sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-primary">
+                Flujo de pedido
+              </p>
+              <h1 className="font-display text-2xl font-semibold leading-tight text-brand-dark sm:text-3xl">
+                Realiza tu pedido
+              </h1>
+              <p className="text-sm text-brand-dark/80">
+                Elige tu dia, revisa tus productos y confirma en pocos pasos.
+              </p>
+            </div>
+            <span className="rounded-full bg-brand-soft px-3 py-1 text-[11px] font-semibold text-brand-dark/80">
+              Paso {currentStep} de {steps.length}
+            </span>
+          </div>
+        </header>
 
-        <ol className="grid gap-2 rounded-2xl bg-white p-4 ring-1 ring-brand-accent/60 sm:grid-cols-4">
+        <ol className="grid grid-cols-4 gap-2 rounded-2xl border border-brand-accent/60 bg-white p-2 sm:gap-2.5 sm:p-3">
           {steps.map((step) => {
             const isCurrent = step.id === currentStep;
             const isCompleted = step.id < currentStep;
@@ -412,7 +419,7 @@ export default function PedirPage() {
               <li
                 key={step.id}
                 className={[
-                  "rounded-xl border px-3 py-2 text-xs transition",
+                  "rounded-xl border px-2.5 py-2 text-center text-[11px] transition sm:px-3 sm:text-xs",
                   isCurrent
                     ? "border-brand-primary bg-brand-primary/10 text-brand-primary"
                     : isCompleted
@@ -420,78 +427,79 @@ export default function PedirPage() {
                       : "border-brand-accent/60 bg-brand-soft/40 text-brand-dark/70",
                 ].join(" ")}
               >
-                <p className="font-semibold">Paso {step.id}</p>
-                <p>{step.label}</p>
+                <span className="block text-[10px] font-semibold uppercase tracking-wide sm:text-[11px]">
+                  Paso {step.id}
+                </span>
+                <span className="mt-0.5 block font-medium">{step.label}</span>
               </li>
             );
           })}
         </ol>
 
-        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-          <article className="rounded-2xl bg-white p-5 ring-1 ring-brand-accent/60 sm:p-6">
+        <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)] lg:gap-4">
+          <article className="rounded-2xl border border-brand-accent/60 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] sm:p-6">
             {currentStep === 1 ? (
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-brand-dark">
-                  Paso 1: Elige el dia de pedido
-                </h2>
-                <p className="mt-1 text-sm text-brand-dark/75">
-                  Selecciona una fecha habilitada para continuar con tu pedido.
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-brand-dark sm:text-2xl">
+                    Paso 1: Elige el día de pedido
+                  </h2>
+                  <p className="mt-1 text-sm text-brand-dark/75">
+                    Selecciona una fecha habilitada para continuar con tu pedido.
+                  </p>
+                </div>
 
-                <DayPicker className="mt-4" value={selectedDate} onChange={setSelectedDate} />
+                <DayPicker value={selectedDate} onChange={setSelectedDate} />
 
-                <div className="mt-4 rounded-xl bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
+                <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/65 p-3 text-sm text-brand-dark/80">
                   <span className="font-medium text-brand-dark">Fecha seleccionada:</span>{" "}
                   {selectedDateText}
                 </div>
 
                 {!hasHydratedCart && (
-                  <p className="mt-2 text-xs text-brand-dark/70">
-                    Cargando carrito guardado...
-                  </p>
+                  <p className="text-xs text-brand-dark/70">Cargando carrito guardado...</p>
                 )}
 
                 {isResolvingOrderDay && (
-                  <p className="mt-2 text-xs text-brand-dark/70">Validando disponibilidad del dia...</p>
+                  <p className="text-xs text-brand-dark/70">Validando disponibilidad del día...</p>
                 )}
 
                 {orderDayResolveError && (
-                  <p className="mt-2 text-xs text-destructive">{orderDayResolveError}</p>
+                  <p className="text-xs text-destructive">{orderDayResolveError}</p>
                 )}
               </div>
             ) : null}
 
             {currentStep === 2 ? (
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-brand-dark">
-                  Paso 2: Productos
-                </h2>
-                <p className="mt-1 text-sm text-brand-dark/75">
-                  Revisa lo que estas por pedir antes de pasar a tus datos de contacto.
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-brand-dark sm:text-2xl">
+                    Paso 2: Productos
+                  </h2>
+                  <p className="mt-1 text-sm text-brand-dark/75">
+                    Revisa lo que estás por pedir antes de pasar a tus datos de contacto.
+                  </p>
+                </div>
 
                 {!hasHydratedCart ? (
-                  <div className="mt-4 rounded-xl bg-brand-soft/70 p-4 text-sm text-brand-dark/80">
+                  <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/70 p-4 text-sm text-brand-dark/80">
                     Cargando carrito guardado...
                   </div>
                 ) : cartIsEmpty ? (
-                  <div className="mt-4 rounded-xl bg-brand-soft/70 p-4 text-sm text-brand-dark/80">
-                    <p>Tu carrito esta vacio.</p>
-                    <Button
-                      asChild
-                      className="mt-3 bg-brand-primary text-white hover:bg-brand-primary/90"
-                    >
-                      <Link href="/menu">Ir al menu</Link>
+                  <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/70 p-4 text-sm text-brand-dark/80">
+                    <p>Tu carrito está vacío.</p>
+                    <Button asChild className="mt-3 w-full sm:w-auto">
+                      <Link href="/menu">Ir al menú</Link>
                     </Button>
                   </div>
                 ) : (
-                  <div className="mt-4 space-y-3">
+                  <div className="space-y-3">
                     {items.map((item) => {
                       const lineTotal = item.price * item.quantity;
                       return (
                         <div
                           key={item.lineId}
-                          className="rounded-xl bg-brand-soft/50 p-3 ring-1 ring-brand-accent/50"
+                          className="rounded-xl border border-brand-accent/50 bg-brand-soft/50 p-3.5"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -510,7 +518,7 @@ export default function PedirPage() {
                             </p>
                           )}
                           <div className="mt-3 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1 rounded-md border border-brand-accent bg-brand-soft/70 p-1">
+                            <div className="flex items-center gap-1 rounded-xl border border-brand-accent bg-white/70 p-1">
                               <Button
                                 type="button"
                                 size="icon-xs"
@@ -549,7 +557,7 @@ export default function PedirPage() {
                         </div>
                       );
                     })}
-                    <div className="rounded-xl bg-white p-3 ring-1 ring-brand-accent/60">
+                    <div className="rounded-xl border border-brand-accent/60 bg-white p-3">
                       <p className="text-sm text-brand-dark/80">
                         Total general:{" "}
                         <span className="font-semibold text-brand-primary">
@@ -563,21 +571,23 @@ export default function PedirPage() {
             ) : null}
 
             {currentStep === 3 ? (
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-brand-dark">
-                  Paso 3: Datos de contacto
-                </h2>
-                <p className="mt-1 text-sm text-brand-dark/75">
-                  Completa tus datos para preparar la confirmacion del pedido.
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-brand-dark sm:text-2xl">
+                    Paso 3: Datos de contacto
+                  </h2>
+                  <p className="mt-1 text-sm text-brand-dark/75">
+                    Completa tus datos para preparar la confirmación del pedido.
+                  </p>
+                </div>
 
                 {authenticatedUser && (
-                  <div className="mt-4 rounded-xl bg-brand-soft/70 p-3 text-xs text-brand-dark/80">
-                    Pedido autenticado: se asociara a tu cuenta y se usaran tus datos de perfil.
+                  <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/70 p-3 text-xs text-brand-dark/80">
+                    Pedido autenticado: se asociará a tu cuenta y se usarán tus datos de perfil.
                   </div>
                 )}
 
-                <form className="mt-4 space-y-4" onSubmit={(event) => event.preventDefault()}>
+                <form className="space-y-3.5" onSubmit={(event) => event.preventDefault()}>
                   <div className="space-y-2">
                     <Label htmlFor="contact-name">Nombre</Label>
                     <Input id="contact-name" type="text" placeholder="Tu nombre" {...register("name")} />
@@ -597,7 +607,7 @@ export default function PedirPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="contact-phone">
-                      {authenticatedUser ? "Telefono (opcional)" : "Telefono"}
+                      {authenticatedUser ? "Teléfono (opcional)" : "Teléfono"}
                     </Label>
                     <Input id="contact-phone" type="text" placeholder="0999999999" {...register("phone")} />
                     {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
@@ -607,21 +617,22 @@ export default function PedirPage() {
             ) : null}
 
             {currentStep === 4 ? (
-              <div>
-                <h2 className="font-display text-2xl font-semibold text-brand-dark">
-                  Paso 4: Confirmacion
-                </h2>
-                <p className="mt-1 text-sm text-brand-dark/75">
-                  Revisa el resumen y confirma para crear tu pedido real.
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-brand-dark sm:text-2xl">
+                    Paso 4: Confirmación
+                  </h2>
+                  <p className="mt-1 text-sm text-brand-dark/75">
+                    Revisa el resumen y confirma para crear tu pedido real.
+                  </p>
+                </div>
 
-                <div className="mt-4 space-y-3">
-                  <div className="rounded-xl bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
-                    <span className="font-medium text-brand-dark">Dia elegido:</span>{" "}
-                    {selectedDateText}
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
+                    <span className="font-medium text-brand-dark">Día elegido:</span> {selectedDateText}
                   </div>
 
-                  <div className="rounded-xl bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
+                  <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
                     <p>
                       <span className="font-medium text-brand-dark">Items:</span> {totalItems}
                     </p>
@@ -631,7 +642,7 @@ export default function PedirPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
+                  <div className="rounded-xl border border-brand-accent/50 bg-brand-soft/70 p-3 text-sm text-brand-dark/80">
                     <p>
                       <span className="font-medium text-brand-dark">Tipo de pedido:</span>{" "}
                       {authenticatedUser ? "Cuenta autenticada" : "Invitado"}
@@ -645,21 +656,21 @@ export default function PedirPage() {
                       {contactSummary.email || "-"}
                     </p>
                     <p>
-                      <span className="font-medium text-brand-dark">Telefono:</span>{" "}
+                      <span className="font-medium text-brand-dark">Teléfono:</span>{" "}
                       {contactSummary.phone || "-"}
                     </p>
                   </div>
                 </div>
 
                 {submitOrderError && (
-                  <div className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
                     {submitOrderError}
                   </div>
                 )}
 
                 <Button
                   type="button"
-                  className="mt-4 w-full bg-brand-primary text-white hover:bg-brand-primary/90"
+                  className="w-full"
                   disabled={
                     isSubmittingOrder ||
                     !hasHydratedCart ||
@@ -674,11 +685,39 @@ export default function PedirPage() {
                 </Button>
               </div>
             ) : null}
+
+            <div className="mt-6 rounded-xl border border-brand-accent/50 bg-brand-soft/40 p-3.5 sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {currentStep > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={handleBack}
+                  >
+                    Volver
+                  </Button>
+                )}
+
+                {currentStep < 4 && (
+                  <Button
+                    type="button"
+                    className="w-full sm:flex-1"
+                    disabled={continueDisabled}
+                    onClick={handleContinue}
+                  >
+                    {continueButtonLabel}
+                  </Button>
+                )}
+              </div>
+
+              <p className="mt-2 text-xs text-brand-dark/70">{helperText}</p>
+            </div>
           </article>
 
-          <aside className="space-y-4">
-            <article className="rounded-2xl bg-white p-5 ring-1 ring-brand-accent/60">
-              <h3 className="font-display text-xl font-semibold text-brand-dark">
+          <aside className="lg:sticky lg:top-24">
+            <article className="rounded-2xl border border-brand-accent/60 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] sm:p-5">
+              <h3 className="font-display text-lg font-semibold text-brand-dark sm:text-xl">
                 Resumen del carrito
               </h3>
 
@@ -688,13 +727,16 @@ export default function PedirPage() {
                 </div>
               ) : cartIsEmpty ? (
                 <div className="mt-3 space-y-2 text-sm text-brand-dark/80">
-                  <p>Tu carrito esta vacio.</p>
-                  <Button asChild className="bg-brand-primary text-white hover:bg-brand-primary/90">
-                    <Link href="/menu">Ir al menu</Link>
+                  <p>Tu carrito está vacío.</p>
+                  <Button asChild className="w-full sm:w-auto">
+                    <Link href="/menu">Ir al menú</Link>
                   </Button>
                 </div>
               ) : (
                 <div className="mt-3 space-y-2 text-sm">
+                  <p className="text-brand-dark/80">
+                    Día: <span className="font-medium text-brand-dark">{selectedDateText}</span>
+                  </p>
                   <p className="text-brand-dark/80">
                     Items: <span className="font-semibold text-brand-dark">{totalItems}</span>
                   </p>
@@ -704,38 +746,9 @@ export default function PedirPage() {
                       {currencyFormatter.format(totalPrice)}
                     </span>
                   </p>
-                  <p className="text-xs text-brand-dark/70">{items.length} linea(s) en carrito.</p>
+                  <p className="text-xs text-brand-dark/70">{items.length} línea(s) en carrito.</p>
                 </div>
               )}
-            </article>
-
-            <article className="rounded-2xl bg-white p-5 ring-1 ring-brand-accent/60">
-              {currentStep > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mb-2 w-full border-brand-accent text-brand-dark"
-                  onClick={handleBack}
-                >
-                  Volver
-                </Button>
-              )}
-
-              {currentStep < 4 && (
-                <>
-                  <Button
-                    type="button"
-                    className="w-full bg-brand-primary text-white hover:bg-brand-primary/90"
-                    disabled={continueDisabled}
-                    onClick={handleContinue}
-                  >
-                    {continueButtonLabel}
-                  </Button>
-                  <p className="mt-2 text-xs text-brand-dark/70">{helperText}</p>
-                </>
-              )}
-
-              {currentStep === 4 && <p className="text-xs text-brand-dark/70">{helperText}</p>}
             </article>
           </aside>
         </div>
